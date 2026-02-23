@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WP JSON Fast Blog</title>
+<title>WP JSON Fast Blog - Unlimited Scroll</title>
 <style>
-/* ORIGINAL CSS PRESERVED */
+/* PRESERVED ORIGINAL STYLING */
 :root{
   --bg:#f5f7fb;--card:#fff;--text:#111827;
   --muted:#6b7280;--primary:#2563eb;
@@ -32,8 +32,9 @@ main{max-width:900px;margin:auto;padding:14px}
   display:flex;gap:14px;align-items:center;
   background:var(--card);border-radius:16px;
   padding:12px;margin-bottom:14px;
-  cursor:pointer
+  cursor:pointer;transition: transform 0.2s;
 }
+.card:active { transform: scale(0.98); }
 .thumb{
   width:120px;height:80px;object-fit:cover;
   border-radius:12px;background:#eee;
@@ -41,18 +42,6 @@ main{max-width:900px;margin:auto;padding:14px}
 }
 .title{font-weight:600;font-size:15px}
 .meta{font-size:12px;color:var(--muted)}
-
-.pagination{
-  display:flex;flex-wrap:wrap;gap:8px;
-  justify-content:center;margin:20px 0
-}
-.pagination button,.pagination input{
-  padding:8px 12px;border-radius:999px;
-  border:1px solid #e5e7eb;background:#fff
-}
-.pagination button.active{
-  background:var(--primary);color:#fff
-}
 
 .single{
   background:var(--card);border-radius:20px;
@@ -83,38 +72,43 @@ main{max-width:900px;margin:auto;padding:14px}
 }
 video{width:100%;margin-top:10px;border-radius:14px}
 
-.ad-box{margin:16px 0;border-radius:16px;overflow:hidden}
+.ad-box{margin:16px 0;border-radius:16px;overflow:hidden;background:#eee;min-height:250px;}
+#loader { text-align: center; padding: 20px; color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
+
 <header>
-  <input id="search" placeholder="Search posts...">
+  <input id="search" placeholder="Search all posts...">
 </header>
+
 <main id="posts"></main>
 
+<div id="loader">Loading more content...</div>
 
 <script>
 /* CONFIG */
 const API_BASE = 'https://allinone.ascalrack.workers.dev/?url=https://www.soniyabedi.in/blog/wp-json/wp/v2/posts?_embed';
-const PER_PAGE = 20; // Loads in blocks of 20 as you scroll until EVERYTHING is shown
+const PER_PAGE = 20; // Chunks of 20 for stability, but pulls until finished
 const MAIN_AD_URL = 'https://www.effectivegatecpm.com/udpve945?key=7cd66743658c606e293d255b9b789ef5';
 const POPUNDER_SCRIPT = 'https://pl28772002.effectivegatecpm.com/8e/59/71/8e5971f333df02f76a99caef6bfba4e3.js';
 
 let page = 1;
 let isFetching = false;
-let hasMore = true; // Tracks if there are more posts left in the database
+let hasMore = true;
 let actionCount = 0;
 let popLoaded = false;
+let currentSearch = '';
 
 const postsContainer = document.getElementById('posts');
+const loader = document.getElementById('loader');
 const searchInput = document.getElementById('search');
-const scrollAnchor = document.getElementById('scroll-anchor');
 
-// 1. Browser Blocker (Preserved)
+// Browser Blocker
 async function checkBrowser() {
     const isBrave = navigator.brave && await navigator.brave.isBrave();
     if (isBrave) {
-        document.body.innerHTML = `<div style="text-align:center;padding:50px;"><h1>Access Denied</h1><p>Brave is not supported.</p></div>`;
+        document.body.innerHTML = `<div style="padding:50px;text-align:center;"><h1>Unsupported Browser</h1></div>`;
         window.stop();
         throw new Error("Blocked");
     }
@@ -131,108 +125,122 @@ function trackActionWithAd(){
     window.open(MAIN_AD_URL,'_blank');
 }
 
-// 2. The Core Infinite Loader
-async function fetchAllPosts(reset = false) {
+// THE MAIN AUTO-LOADER
+async function loadPosts(reset = false) {
     if (isFetching || (!hasMore && !reset)) return;
     
     isFetching = true;
+    loader.style.display = 'block';
+
     if (reset) {
         page = 1;
         hasMore = true;
         postsContainer.innerHTML = '';
     }
 
-    const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(searchInput.value)}`;
+    const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(currentSearch)}`;
 
     try {
-        const r = await fetch(url);
-        const data = await r.json();
+        const response = await fetch(url);
+        const data = await response.json();
 
-        // If the API returns fewer than requested or an empty array, we've hit the absolute end
-        if (!Array.isArray(data) || data.length < PER_PAGE) {
+        if (!Array.isArray(data) || data.length === 0) {
             hasMore = false;
-        }
-
-        if (Array.isArray(data)) {
-            data.forEach((p) => {
-                const img = p.schema?.thumbnailUrl || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+            loader.innerHTML = "No more posts to show.";
+        } else {
+            if (data.length < PER_PAGE) hasMore = false;
+            
+            data.forEach(post => {
+                const img = post.schema?.thumbnailUrl || post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
                 
-                // Ad Box
-                const adBox = document.createElement('div');
-                adBox.className='ad-box';
-                adBox.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
-                postsContainer.appendChild(adBox);
+                // Ads between cards
+                const ad = document.createElement('div');
+                ad.className = 'ad-box';
+                ad.innerHTML = `<iframe src="${MAIN_AD_URL}" style="width:100%;height:250px;border:0" loading="lazy"></iframe>`;
+                postsContainer.appendChild(ad);
 
                 // Post Card
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.innerHTML = img
-                    ? `<img class="thumb" src="${img}"><div><div class="title">${p.title.rendered}</div><div class="meta">${new Date(p.date).toLocaleDateString()}</div></div>`
-                    : `<div style="padding:10px;"><div class="title">${p.title.rendered}</div></div>`;
-                
-                card.onclick = () => { trackActionWithAd(); openPost(p.id); };
+                card.innerHTML = `
+                    ${img ? `<img class="thumb" src="${img}" loading="lazy">` : ''}
+                    <div>
+                        <div class="title">${post.title.rendered}</div>
+                        <div class="meta">${new Date(post.date).toLocaleDateString()}</div>
+                    </div>
+                `;
+                card.onclick = () => { trackActionWithAd(); openPost(post.id); };
                 postsContainer.appendChild(card);
             });
             page++;
+            if(!hasMore) loader.innerHTML = "End of feed.";
         }
     } catch (e) {
-        console.error("End of posts or error", e);
         hasMore = false;
+        loader.innerHTML = "Error loading posts.";
     } finally {
         isFetching = false;
     }
 }
 
-// 3. Intersection Observer (Triggers fetch when scrolling to bottom)
+// Scroll detection using IntersectionObserver
 const observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && hasMore) {
-        fetchAllPosts();
+        loadPosts();
     }
-}, { rootMargin: '400px' }); // Starts loading the next set 400px before reaching the end
+}, { rootMargin: '300px' }); // Load next batch when 300px from bottom
 
-observer.observe(scrollAnchor);
+observer.observe(loader);
 
-// 4. Search Handler
-searchInput.oninput = () => fetchAllPosts(true);
+// Search Handling
+searchInput.addEventListener('input', (e) => {
+    currentSearch = e.target.value;
+    loadPosts(true);
+});
 
-// 5. Navigation & Single Post Logic
-function openPost(id){
+function openPost(id) {
     history.pushState({post: id}, '', `?post=${id}`);
-    loadSingle(id);
+    renderSingle(id);
 }
 
-async function loadSingle(id){
-    scrollAnchor.style.display = 'none'; // Hide scroll trigger on single post
-    const r = await fetch(`${API_BASE}&include=${id}`);
-    const p = (await r.json())[0];
-    const img = p.schema?.thumbnailUrl || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-    const mp4s = [...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
+async function renderSingle(id) {
+    loader.style.display = 'none';
+    const res = await fetch(`${API_BASE}&include=${id}`);
+    const post = (await res.json())[0];
+    const img = post.schema?.thumbnailUrl || post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+    const mp4s = [...post.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m => m[0]);
 
-    postsContainer.innerHTML=`
+    postsContainer.innerHTML = `
         <div class="single">
-          <div class="nav"><button onclick="window.location.reload()">Back to Feed</button></div>
-          ${img?`<img src="${img}">`:''}
-          <h1>${p.title.rendered}</h1>
-          <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
-          <div>${p.content.rendered}</div>
-          ${mp4s.map((u,i)=>`
-            <div class="video-link" onclick="trackActionWithAd(); this.nextElementSibling.innerHTML='<video controls autoplay src=\\'${u}\\'></video>'">
-              <div class="play">▶</div>
-              <div>Unlock Video ${i+1}</div>
-            </div>
-            <div id="player-${i}"></div>
-          `).join('')}
+            <div class="nav"><button onclick="location.href=location.pathname">← Back</button></div>
+            ${img ? `<img src="${img}">` : ''}
+            <h1>${post.title.rendered}</h1>
+            <div class="ad-box"><iframe src="${MAIN_AD_URL}" style="width:100%;height:250px;border:0"></iframe></div>
+            <div class="post-content">${post.content.rendered}</div>
+            ${mp4s.map((url, i) => `
+                <div class="video-link" onclick="trackActionWithAd(); this.nextElementSibling.innerHTML='<video controls autoplay src=\\'${url}\\'></video>'">
+                    <div class="play">▶</div>
+                    <div>Watch Viral Video ${i+1}</div>
+                </div>
+                <div class="video-container"></div>
+            `).join('')}
         </div>
     `;
     window.scrollTo(0,0);
 }
 
-// 6. Init
-checkBrowser().then(() => {
-    const q = new URLSearchParams(location.search);
-    if(q.get('post')) loadSingle(q.get('post'));
-    else fetchAllPosts();
-});
+// Initial Route Logic
+function init() {
+    checkBrowser().then(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('post')) renderSingle(params.get('post'));
+        else loadPosts();
+    });
+}
+
+window.onpopstate = () => location.reload();
+init();
 </script>
+
 </body>
 </html>
