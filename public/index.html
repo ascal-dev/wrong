@@ -91,151 +91,157 @@ video{width:100%;margin-top:10px;border-radius:14px}
   <input id="search" placeholder="Search posts...">
 </header>
 <main id="posts"></main>
-
 <script>
 /* CONFIG */
 const API_BASE = 'https://allinone.ascalrack.workers.dev/?url=https://www.soniyabedi.in/blog/wp-json/wp/v2/posts?_embed';
-const PER_PAGE = 100; 
+const PER_PAGE = 20; // Lowered from 100 for better performance during scroll
 const MAIN_AD_URL = 'https://www.effectivegatecpm.com/udpve945?key=7cd66743658c606e293d255b9b789ef5';
 const POPUNDER_SCRIPT = 'https://pl28772002.effectivegatecpm.com/8e/59/71/8e5971f333df02f76a99caef6bfba4e3.js';
-const ACTION_LIMIT = 1; // VERY AGGRESSIVE: Ad every 2nd click
+const ACTION_LIMIT = 1; 
 
 let page = 1;
 let totalPages = 1;
 let search = '';
 let actionCount = 0;
 let popLoaded = false;
+let isFetching = false; // Prevents duplicate loading
 
-const posts = document.getElementById('posts');
+const postsContainer = document.getElementById('posts');
+// Create a sentinel element to detect scroll end
+const sentinel = document.createElement('div');
+sentinel.id = 'sentinel';
+sentinel.style.height = '10px';
 
-// 1. IMMEDIATE BROWSER BLOCKER (BRAVE & ULLA)
+// 1. Browser Blocker (Preserved)
 async function checkBrowser() {
     const isBrave = navigator.brave && await navigator.brave.isBrave();
     const isUlla = navigator.userAgent.toLowerCase().includes('ulla');
-    
     if (isBrave || isUlla) {
-        document.body.innerHTML = `
-            <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:sans-serif; background:#fff;">
-                <h1 style="color:red;">Access Denied</h1>
-                <p style="font-size:18px;">Brave and Ulla browsers are not supported.<br>Please use Chrome, Safari, or Edge to access this service.</p>
-                <a href="${MAIN_AD_URL}" style="text-decoration:none; background:blue; color:white; padding:15px 30px; border-radius:30px; margin-top:20px;">Exit Site</a>
-            </div>`;
-        window.stop(); // Stop loading anything else
+        document.body.innerHTML = `<div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:sans-serif; background:#fff;"><h1 style="color:red;">Access Denied</h1><p style="font-size:18px;">Brave and Ulla browsers are not supported.</p><a href="${MAIN_AD_URL}" style="text-decoration:none; background:blue; color:white; padding:15px 30px; border-radius:30px; margin-top:20px;">Exit Site</a></div>`;
+        window.stop();
         throw new Error("Blocked Browser");
     }
 }
 
-function loadPopunder(){
-  if(popLoaded) return;
-  popLoaded = true;
-  const s = document.createElement('script');
-  s.src = POPUNDER_SCRIPT;
-  s.async = true;
-  document.body.appendChild(s);
-}
-
 function trackActionWithAd(){
-  actionCount++;
-  if(actionCount === 1) loadPopunder();
-  // Open ad on every X clicks
-  if(actionCount % ACTION_LIMIT === 0) window.open(MAIN_AD_URL,'_blank');
+    actionCount++;
+    if(actionCount === 1 && !popLoaded) {
+        popLoaded = true;
+        const s = document.createElement('script');
+        s.src = POPUNDER_SCRIPT;
+        document.body.appendChild(s);
+    }
+    if(actionCount % ACTION_LIMIT === 0) window.open(MAIN_AD_URL,'_blank');
 }
 
 window.onpopstate = route;
 
 function route(){
-  checkBrowser().then(() => {
-    const q = new URLSearchParams(location.search);
-    if(q.get('post')){
-      loadSingle(q.get('post'));
-    } else {
-      page = Number(q.get('page')) || 1;
-      loadPosts();
-    }
-  });
-}
-
-function getThumb(p){
-  return p.schema?.thumbnailUrl || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+    checkBrowser().then(() => {
+        const q = new URLSearchParams(location.search);
+        if(q.get('post')){
+            loadSingle(q.get('post'));
+        } else {
+            postsContainer.innerHTML = ''; // Clear for fresh list
+            page = 1;
+            loadPosts();
+        }
+    });
 }
 
 async function loadPosts(){
-  posts.innerHTML = 'Loading…';
-  const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(search)}`;
-  const r = await fetch(url);
-  
-  totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1);
-  const d = await r.json();
-  posts.innerHTML = '';
+    if (isFetching || page > totalPages) return;
+    isFetching = true;
 
-  d.forEach((p,i)=>{
-    const img = getThumb(p);
+    const loadingIndicator = document.createElement('p');
+    loadingIndicator.innerText = 'Loading more posts...';
+    postsContainer.appendChild(loadingIndicator);
+
+    const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(search)}`;
     
-    // AGGRESSIVE: Add Ad BEFORE every post
-    const adTop = document.createElement('div');
-    adTop.className='ad-box';
-    adTop.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
-    posts.appendChild(adTop);
+    try {
+        const r = await fetch(url);
+        totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1);
+        const data = await r.json();
+        
+        loadingIndicator.remove();
 
-    const c = document.createElement('div');
-    c.className = 'card';
-    c.innerHTML = img
-      ? `<img class="thumb" src="${img}"><div><div class="title">${p.title.rendered}</div><div class="meta">${new Date(p.date).toLocaleString()}</div></div>`
-      : `<div class="title">${p.title.rendered}</div>`;
-    c.addEventListener('click',()=>{ trackActionWithAd(); openPost(p.id); });
-    posts.appendChild(c);
-  });
-  renderPagination();
+        data.forEach((p) => {
+            const img = p.schema?.thumbnailUrl || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+            
+            // Ad Box
+            const adTop = document.createElement('div');
+            adTop.className='ad-box';
+            adTop.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
+            postsContainer.appendChild(adTop);
+
+            // Post Card
+            const c = document.createElement('div');
+            c.className = 'card';
+            c.innerHTML = img
+              ? `<img class="thumb" src="${img}"><div><div class="title">${p.title.rendered}</div><div class="meta">${new Date(p.date).toLocaleString()}</div></div>`
+              : `<div class="title">${p.title.rendered}</div>`;
+            c.addEventListener('click',()=>{ trackActionWithAd(); openPost(p.id); });
+            postsContainer.appendChild(c);
+        });
+
+        page++;
+        isFetching = false;
+        
+        // Re-attach sentinel at the end of the new list
+        postsContainer.appendChild(sentinel);
+    } catch (e) {
+        console.error("Fetch error", e);
+        isFetching = false;
+    }
 }
 
-function renderPagination(){
-  const container=document.createElement('div');
-  container.className='pagination';
-  // ... (pagination logic remains same)
-  posts.appendChild(container);
-}
+// Intersection Observer to trigger loadPosts
+const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+        loadPosts();
+    }
+}, { threshold: 0.1 });
+
+observer.observe(sentinel);
 
 function openPost(id){
-  history.pushState({}, '', `?post=${id}`);
-  loadSingle(id);
+    history.pushState({}, '', `?post=${id}`);
+    loadSingle(id);
 }
 
 async function loadSingle(id){
-  const r = await fetch(`${API_BASE}&include=${id}`);
-  const p = (await r.json())[0];
-  const img = getThumb(p);
-  const firstPara = p.content.rendered.match(/<p>[\s\S]*?<\/p>/i)?.[0]||'';
-  const mp4s = [...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
+    // Stop observing while viewing a single post
+    observer.unobserve(sentinel);
+    
+    const r = await fetch(`${API_BASE}&include=${id}`);
+    const p = (await r.json())[0];
+    const img = p.schema?.thumbnailUrl || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+    const firstPara = p.content.rendered.match(/<p>[\s\S]*?<\/p>/i)?.[0]||'';
+    const mp4s = [...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
 
-  posts.innerHTML=`
-    <div class="single">
-      <div class="nav"><button onclick="trackActionWithAd();history.back()">Back</button></div>
-      <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
-      ${img?`<img src="${img}">`:''}
-      <h1>${p.title.rendered}</h1>
-      <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
-      ${firstPara}
-      <div class="ad-box">
-        <iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>
-        <iframe style="width:100%;height:250px;border:0;margin-top:10px" src="${MAIN_AD_URL}" loading="lazy"></iframe>
-      </div>
-      ${mp4s.map((u,i)=>`
-        <div class="video-link" onclick="playVideo('${u}',${i})">
-          <div class="play">▶</div>
-          <div>Viral Video ${i+1} (Click to Unlock)</div>
+    postsContainer.innerHTML=`
+        <div class="single">
+          <div class="nav"><button onclick="location.href=location.pathname">Back</button></div>
+          <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
+          ${img?`<img src="${img}">`:''}
+          <h1>${p.title.rendered}</h1>
+          <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
+          ${firstPara}
+          <div class="ad-box">
+            <iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>
+          </div>
+          ${mp4s.map((u,i)=>`
+            <div class="video-link" onclick="trackActionWithAd(); this.nextElementSibling.innerHTML='<video controls autoplay src=\\'${u}\\'></video>'">
+              <div class="play">▶</div>
+              <div>Viral Video ${i+1} (Click to Unlock)</div>
+            </div>
+            <div id="player-${i}"></div>
+          `).join('')}
         </div>
-        <div id="player-${i}"></div>
-      `).join('')}
-    </div>
-  `;
+    `;
 }
 
-function playVideo(url,i){
-  trackActionWithAd();
-  document.getElementById('player-'+i).innerHTML=`<video controls autoplay src="${url}"></video>`;
-}
-
-// Start app
 route();
 </script>
 </body>
