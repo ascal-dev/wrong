@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WP JSON Fast Blog</title>
 <style>
-/* ORIGINAL CSS PRESERVED */
 :root{
   --bg:#f5f7fb;--card:#fff;--text:#111827;
   --muted:#6b7280;--primary:#2563eb;
@@ -44,11 +43,12 @@ main{max-width:900px;margin:auto;padding:14px}
 
 .pagination{
   display:flex;flex-wrap:wrap;gap:8px;
-  justify-content:center;margin:20px 0
+  justify-content:center;margin:20px 0;align-items:center
 }
 .pagination button,.pagination input{
   padding:8px 12px;border-radius:999px;
-  border:1px solid #e5e7eb;background:#fff
+  border:1px solid #e5e7eb;background:#fff;
+  cursor:pointer
 }
 .pagination button.active{
   background:var(--primary);color:#fff
@@ -98,7 +98,7 @@ const API_BASE = 'https://leakemms.ascalrack.workers.dev/?url=https://www.soniya
 const PER_PAGE = 10; 
 const MAIN_AD_URL = 'https://www.effectivegatecpm.com/udpve945?key=7cd66743658c606e293d255b9b789ef5';
 const POPUNDER_SCRIPT = 'https://pl28772002.effectivegatecpm.com/8e/59/71/8e5971f333df02f76a99caef6bfba4e3.js';
-const ACTION_LIMIT = 2; // VERY AGGRESSIVE: Ad every 2nd click
+const ACTION_LIMIT = 2; // Trigger ad every 2 clicks
 
 let page = 1;
 let totalPages = 1;
@@ -108,10 +108,11 @@ let popLoaded = false;
 
 const posts = document.getElementById('posts');
 
-// 1. IMMEDIATE BROWSER BLOCKER (BRAVE & ULLA)
+/* 1. BROWSER BLOCKER */
 async function checkBrowser() {
     const isBrave = navigator.brave && await navigator.brave.isBrave();
-    const isUlla = navigator.userAgent.toLowerCase().includes('ulla');
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isUlla = userAgent.includes('ulla');
     
     if (isBrave || isUlla) {
         document.body.innerHTML = `
@@ -120,11 +121,12 @@ async function checkBrowser() {
                 <p style="font-size:18px;">Brave and Ulla browsers are not supported.<br>Please use Chrome, Safari, or Edge to access this service.</p>
                 <a href="${MAIN_AD_URL}" style="text-decoration:none; background:blue; color:white; padding:15px 30px; border-radius:30px; margin-top:20px;">Exit Site</a>
             </div>`;
-        window.stop(); // Stop loading anything else
+        window.stop();
         throw new Error("Blocked Browser");
     }
 }
 
+/* 2. AD MANAGEMENT */
 function loadPopunder(){
   if(popLoaded) return;
   popLoaded = true;
@@ -134,15 +136,20 @@ function loadPopunder(){
   document.body.appendChild(s);
 }
 
+// THE CLICK TRACKER: Triggers ad every 2nd click
 function trackActionWithAd(){
   actionCount++;
   if(actionCount === 1) loadPopunder();
-  // Open ad on every X clicks
-  if(actionCount % ACTION_LIMIT === 0) window.open(MAIN_AD_URL,'_blank');
+  
+  // Every 2nd click triggers the popup
+  if(actionCount % ACTION_LIMIT === 0) {
+    window.open(MAIN_AD_URL, '_blank');
+  }
 }
 
 window.onpopstate = route;
 
+/* ROUTING */
 function route(){
   checkBrowser().then(() => {
     const q = new URLSearchParams(location.search);
@@ -150,66 +157,129 @@ function route(){
       loadSingle(q.get('post'));
     } else {
       page = Number(q.get('page')) || 1;
+      search = q.get('search') || '';
+      document.getElementById('search').value = search;
       loadPosts();
     }
   });
 }
 
+/* GET THUMBNAIL */
 function getThumb(p){
   return p.schema?.thumbnailUrl || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
 }
 
+/* LOAD POSTS LIST */
 async function loadPosts(){
   posts.innerHTML = 'Loading…';
   const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(search)}`;
   const r = await fetch(url);
-  
   totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1);
   const d = await r.json();
   posts.innerHTML = '';
 
   d.forEach((p,i)=>{
     const img = getThumb(p);
-    
-    // AGGRESSIVE: Add Ad BEFORE every post
-    const adTop = document.createElement('div');
-    adTop.className='ad-box';
-    adTop.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
-    posts.appendChild(adTop);
+
+    // Inline Ad every few posts
+    if(i % 3 === 0) {
+        const adTop = document.createElement('div');
+        adTop.className='ad-box';
+        adTop.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
+        posts.appendChild(adTop);
+    }
 
     const c = document.createElement('div');
     c.className = 'card';
     c.innerHTML = img
       ? `<img class="thumb" src="${img}"><div><div class="title">${p.title.rendered}</div><div class="meta">${new Date(p.date).toLocaleString()}</div></div>`
       : `<div class="title">${p.title.rendered}</div>`;
-    c.addEventListener('click',()=>{ trackActionWithAd(); openPost(p.id); });
+    
+    // CLICK POST ACTION
+    c.addEventListener('click',()=>{ 
+        trackActionWithAd(); 
+        openPost(p.id); 
+    });
     posts.appendChild(c);
   });
+
   renderPagination();
 }
 
+/* PAGINATION */
 function renderPagination(){
-  const container=document.createElement('div');
-  container.className='pagination';
-  // ... (pagination logic remains same)
+  const container = document.createElement('div');
+  container.className = 'pagination';
+
+  // Previous
+  const prevBtn = document.createElement('button');
+  prevBtn.textContent = 'Prev';
+  prevBtn.disabled = page <= 1;
+  prevBtn.addEventListener('click', () => {
+    trackActionWithAd(); // Click track
+    if(page > 1) {
+      page--;
+      history.pushState({}, '', `?page=${page}`);
+      loadPosts();
+    }
+  });
+  container.appendChild(prevBtn);
+
+  // Next
+  const nextBtn = document.createElement('button');
+  nextBtn.textContent = 'Next';
+  nextBtn.disabled = page >= totalPages;
+  nextBtn.addEventListener('click', () => {
+    trackActionWithAd(); // Click track
+    if(page < totalPages){
+      page++;
+      history.pushState({}, '', `?page=${page}`);
+      loadPosts();
+    }
+  });
+  container.appendChild(nextBtn);
+
+  // Go input logic
+  const goBtn = document.createElement('button');
+  goBtn.textContent = 'Go';
+  const goInput = document.createElement('input');
+  goInput.type = 'number';
+  goInput.value = page;
+  goInput.style.width = '50px';
+
+  goBtn.addEventListener('click', () => {
+    trackActionWithAd(); // Click track
+    let val = parseInt(goInput.value);
+    if(val >= 1 && val <= totalPages){
+      page = val;
+      history.pushState({}, '', `?page=${page}`);
+      loadPosts();
+    }
+  });
+  container.appendChild(goInput);
+  container.appendChild(goBtn);
+
   posts.appendChild(container);
 }
 
+/* OPEN SINGLE POST */
 function openPost(id){
   history.pushState({}, '', `?post=${id}`);
   loadSingle(id);
 }
 
+/* LOAD SINGLE POST */
 async function loadSingle(id){
   const r = await fetch(`${API_BASE}&include=${id}`);
-  const p = (await r.json())[0];
+  const data = await r.json();
+  const p = data[0];
   const img = getThumb(p);
   const firstPara = p.content.rendered.match(/<p>[\s\S]*?<\/p>/i)?.[0]||'';
   const mp4s = [...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
 
   posts.innerHTML=`
     <div class="single">
-      <div class="nav"><button onclick="trackActionWithAd();history.back()">Back</button></div>
+      <div class="nav"><button id="back-btn">Back</button></div>
       <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
       ${img?`<img src="${img}">`:''}
       <h1>${p.title.rendered}</h1>
@@ -217,10 +287,9 @@ async function loadSingle(id){
       ${firstPara}
       <div class="ad-box">
         <iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>
-        <iframe style="width:100%;height:250px;border:0;margin-top:10px" src="${MAIN_AD_URL}" loading="lazy"></iframe>
       </div>
       ${mp4s.map((u,i)=>`
-        <div class="video-link" onclick="playVideo('${u}',${i})">
+        <div class="video-link" id="vid-btn-${i}">
           <div class="play">▶</div>
           <div>Viral Video ${i+1} (Click to Unlock)</div>
         </div>
@@ -228,14 +297,39 @@ async function loadSingle(id){
       `).join('')}
     </div>
   `;
+
+  // BACK BUTTON LISTENER
+  document.getElementById('back-btn').addEventListener('click', () => {
+      trackActionWithAd();
+      history.back();
+  });
+
+  // VIDEO CLICK LISTENERS
+  mp4s.forEach((u, i) => {
+      document.getElementById(`vid-btn-${i}`).addEventListener('click', () => {
+          playVideo(u, i);
+      });
+  });
 }
 
+/* PLAY VIDEO */
 function playVideo(url,i){
-  trackActionWithAd();
+  trackActionWithAd(); // Every video play attempt is a trackable click
   document.getElementById('player-'+i).innerHTML=`<video controls autoplay src="${url}"></video>`;
 }
 
-// Start app
+/* SEARCH HANDLER */
+document.getElementById('search').addEventListener('keyup', (e)=>{
+  if(e.key==='Enter'){
+    trackActionWithAd(); // Entering search counts
+    search = e.target.value;
+    page = 1;
+    history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
+    loadPosts();
+  }
+});
+
+// START
 route();
 </script>
 </body>
