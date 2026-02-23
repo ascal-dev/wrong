@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WP JSON Fast Blog</title>
+
+<meta name="theme-color" content="#ffffff">
+
 <style>
 :root{
   --bg:#f5f7fb;--card:#fff;--text:#111827;
@@ -87,18 +90,21 @@ video{width:100%;margin-top:10px;border-radius:14px}
 </style>
 </head>
 <body>
+
 <header>
   <input id="search" placeholder="Search posts...">
 </header>
+
 <main id="posts"></main>
 
 <script>
+
 /* CONFIG */
 const API_BASE = 'https://leakemms.ascalrack.workers.dev/?url=https://www.soniyabedi.in/blog/wp-json/wp/v2/posts?_embed';
 const PER_PAGE = 10; 
 const MAIN_AD_URL = 'https://www.effectivegatecpm.com/udpve945?key=7cd66743658c606e293d255b9b789ef5';
 const POPUNDER_SCRIPT = 'https://pl28772002.effectivegatecpm.com/8e/59/71/8e5971f333df02f76a99caef6bfba4e3.js';
-const ACTION_LIMIT = 1; // Trigger ad every 1 click
+const ACTION_LIMIT = 1;
 
 let page = 1;
 let totalPages = 1;
@@ -108,7 +114,10 @@ let popLoaded = false;
 
 const posts = document.getElementById('posts');
 
-/* 1. BROWSER BLOCKER */
+window.history.scrollRestoration = "manual";
+
+/* ---------------- BROWSER BLOCKER ---------------- */
+
 async function checkBrowser() {
     const isBrave = navigator.brave && await navigator.brave.isBrave();
     const userAgent = navigator.userAgent.toLowerCase();
@@ -118,7 +127,7 @@ async function checkBrowser() {
         document.body.innerHTML = `
             <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:sans-serif; background:#fff;">
                 <h1 style="color:red;">Access Denied</h1>
-                <p style="font-size:18px;">Brave and Ulla browsers are not supported.<br>Please use Chrome, Safari, or Edge to access this service.</p>
+                <p style="font-size:18px;">Brave and Ulla browsers are not supported.<br>Please use Chrome, Safari, or Edge.</p>
                 <a href="${MAIN_AD_URL}" style="text-decoration:none; background:blue; color:white; padding:15px 30px; border-radius:30px; margin-top:20px;">Exit Site</a>
             </div>`;
         window.stop();
@@ -126,7 +135,8 @@ async function checkBrowser() {
     }
 }
 
-/* 2. AD MANAGEMENT */
+/* ---------------- ADS ---------------- */
+
 function loadPopunder(){
   if(popLoaded) return;
   popLoaded = true;
@@ -144,28 +154,34 @@ function trackActionWithAd(){
   }
 }
 
-window.onpopstate = route;
+/* ---------------- ROUTING ---------------- */
 
-/* ROUTING */
+window.addEventListener('popstate', () => {
+  route();
+});
+
 function route(){
   checkBrowser().then(() => {
+
     const q = new URLSearchParams(location.search);
-    if(q.get('post')){
-      loadSingle(q.get('post'));
+    const postId = q.get('post');
+
+    if(postId){
+      loadSingle(postId);
     } else {
       page = Number(q.get('page')) || 1;
       search = q.get('search') || '';
       document.getElementById('search').value = search;
       loadPosts();
     }
-  });
+
+  }).catch(()=>{});
 }
 
-/* GET THUMBNAIL */
+/* ---------------- HELPERS ---------------- */
+
 async function getThumb(p){
-  // First try embedded media
   let thumb = p._embedded?.['wp:featuredmedia']?.[0]?.source_url;
-  // If missing, fetch featured_media
   if(!thumb && p.featured_media){
     try{
       const r = await fetch(`https://www.soniyabedi.in/blog/wp-json/wp/v2/media/${p.featured_media}`);
@@ -176,20 +192,22 @@ async function getThumb(p){
   return thumb || '';
 }
 
-/* LOAD POSTS LIST */
+/* ---------------- LOAD POSTS ---------------- */
+
 async function loadPosts(){
   posts.innerHTML = 'Loading…';
+
   const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(search)}`;
   const r = await fetch(url);
   totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1);
   const d = await r.json();
+
   posts.innerHTML = '';
 
   for(let i=0; i<d.length; i++){
     const p = d[i];
     const img = await getThumb(p);
 
-    // Inline Ad every 3 posts
     if(i % 3 === 0){
       const adTop = document.createElement('div');
       adTop.className='ad-box';
@@ -207,13 +225,16 @@ async function loadPosts(){
         trackActionWithAd(); 
         openPost(p.id); 
     });
+
     posts.appendChild(c);
   }
 
   renderPagination();
+  window.scrollTo(0,0);
 }
 
-/* PAGINATION */
+/* ---------------- PAGINATION ---------------- */
+
 function renderPagination(){
   const container = document.createElement('div');
   container.className = 'pagination';
@@ -221,64 +242,74 @@ function renderPagination(){
   const prevBtn = document.createElement('button');
   prevBtn.textContent = 'Prev';
   prevBtn.disabled = page <= 1;
-  prevBtn.addEventListener('click', () => {
+  prevBtn.onclick = () => {
     trackActionWithAd();
     if(page > 1){
       page--;
-      history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
+      pushListState();
       loadPosts();
     }
-  });
-  container.appendChild(prevBtn);
+  };
 
   const nextBtn = document.createElement('button');
   nextBtn.textContent = 'Next';
   nextBtn.disabled = page >= totalPages;
-  nextBtn.addEventListener('click', () => {
+  nextBtn.onclick = () => {
     trackActionWithAd();
     if(page < totalPages){
       page++;
-      history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
+      pushListState();
       loadPosts();
     }
-  });
-  container.appendChild(nextBtn);
+  };
 
   const goInput = document.createElement('input');
   goInput.type='number';
   goInput.value=page;
-  goInput.style.width='50px';
+  goInput.style.width='60px';
 
   const goBtn = document.createElement('button');
   goBtn.textContent='Go';
-  goBtn.addEventListener('click', ()=>{
+  goBtn.onclick = ()=>{
     trackActionWithAd();
     let val = parseInt(goInput.value);
     if(val>=1 && val<=totalPages){
       page=val;
-      history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
+      pushListState();
       loadPosts();
     }
-  });
+  };
 
-  container.appendChild(goInput);
-  container.appendChild(goBtn);
-
+  container.append(prevBtn,nextBtn,goInput,goBtn);
   posts.appendChild(container);
 }
 
-/* OPEN SINGLE POST */
+function pushListState(){
+  history.pushState(
+    { type:'list', page:page, search:search },
+    '',
+    `?page=${page}&search=${encodeURIComponent(search)}`
+  );
+}
+
+/* ---------------- SINGLE POST ---------------- */
+
 function openPost(id){
-  history.pushState({}, '', `?post=${id}`);
+  history.pushState(
+    { type:'post', id:id },
+    '',
+    `?post=${id}`
+  );
   loadSingle(id);
 }
 
-/* LOAD SINGLE POST */
 async function loadSingle(id){
+
   const r = await fetch(`${API_BASE}&include=${id}`);
   const data = await r.json();
   const p = data[0];
   const img = await getThumb(p);
+
   const firstPara = p.content.rendered.match(/<p>[\s\S]*?<\/p>/i)?.[0]||'';
   const mp4s = [...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
 
@@ -301,37 +332,44 @@ async function loadSingle(id){
     </div>
   `;
 
-  document.getElementById('back-btn').addEventListener('click', ()=>{
+  document.getElementById('back-btn').onclick = ()=>{
     trackActionWithAd();
     history.back();
-  });
+  };
 
   mp4s.forEach((u,i)=>{
-    document.getElementById(`vid-btn-${i}`).addEventListener('click', ()=>{
+    document.getElementById(`vid-btn-${i}`).onclick = ()=>{
       playVideo(u,i);
-    });
+    };
   });
+
+  window.scrollTo(0,0);
 }
 
-/* PLAY VIDEO */
+/* ---------------- VIDEO ---------------- */
+
 function playVideo(url,i){
   trackActionWithAd();
-  document.getElementById(`player-${i}`).innerHTML=`<video controls autoplay src="${url}"></video>`;
+  document.getElementById(`player-${i}`).innerHTML=
+    `<video controls autoplay src="${url}"></video>`;
 }
 
-/* SEARCH HANDLER */
+/* ---------------- SEARCH ---------------- */
+
 document.getElementById('search').addEventListener('keyup', (e)=>{
   if(e.key==='Enter'){
     trackActionWithAd();
     search = e.target.value;
     page = 1;
-    history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
+    pushListState();
     loadPosts();
   }
 });
 
-// START
+/* ---------------- START ---------------- */
+
 route();
+
 </script>
 </body>
 </html>
