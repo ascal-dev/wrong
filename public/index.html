@@ -88,20 +88,14 @@ video{width:100%;margin-top:10px;border-radius:14px}
 
 <script>
 /* CONFIG */
-const API_BASE = 'https://allinone.ascalrack.workers.dev/?url=https://www.soniyabedi.in/blog/wp-json/wp/v2/posts?_embed';
-const PER_PAGE = 20; // Chunks of 20 for stability, but pulls until finished
+const API_BASE = 'https://allinone.ascalrack.workers.dev/?url=https://www.soniyabedi.in/blog/wp-json/wp/v2/posts?_embed&per_page=1000';
 const MAIN_AD_URL = 'https://www.effectivegatecpm.com/udpve945?key=7cd66743658c606e293d255b9b789ef5';
 const POPUNDER_SCRIPT = 'https://pl28772002.effectivegatecpm.com/8e/59/71/8e5971f333df02f76a99caef6bfba4e3.js';
 
-let page = 1;
-let isFetching = false;
-let hasMore = true;
-let actionCount = 0;
 let popLoaded = false;
 let currentSearch = '';
 
 const postsContainer = document.getElementById('posts');
-const loader = document.getElementById('loader');
 const searchInput = document.getElementById('search');
 
 // Browser Blocker
@@ -115,8 +109,7 @@ async function checkBrowser() {
 }
 
 function trackActionWithAd(){
-    actionCount++;
-    if(actionCount === 1 && !popLoaded) {
+    if(!popLoaded) {
         popLoaded = true;
         const s = document.createElement('script');
         s.src = POPUNDER_SCRIPT;
@@ -125,77 +118,46 @@ function trackActionWithAd(){
     window.open(MAIN_AD_URL,'_blank');
 }
 
-// THE MAIN AUTO-LOADER
-async function loadPosts(reset = false) {
-    if (isFetching || (!hasMore && !reset)) return;
-    
-    isFetching = true;
-    loader.style.display = 'block';
-
-    if (reset) {
-        page = 1;
-        hasMore = true;
-        postsContainer.innerHTML = '';
-    }
-
-    const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(currentSearch)}`;
-
+async function loadPosts() {
+    postsContainer.innerHTML = `<div id="loader">Loading posts...</div>`;
     try {
+        const url = `${API_BASE}${currentSearch ? '&search=' + encodeURIComponent(currentSearch) : ''}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        if (!Array.isArray(data) || data.length === 0) {
-            hasMore = false;
-            loader.innerHTML = "No more posts to show.";
-        } else {
-            if (data.length < PER_PAGE) hasMore = false;
-            
-            data.forEach(post => {
-                const img = post.schema?.thumbnailUrl || post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-                
-                // Ads between cards
-                const ad = document.createElement('div');
-                ad.className = 'ad-box';
-                ad.innerHTML = `<iframe src="${MAIN_AD_URL}" style="width:100%;height:250px;border:0" loading="lazy"></iframe>`;
-                postsContainer.appendChild(ad);
+        postsContainer.innerHTML = ''; // clear loader
+        data.forEach(post => {
+            const img = post.schema?.thumbnailUrl || post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
 
-                // Post Card
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    ${img ? `<img class="thumb" src="${img}" loading="lazy">` : ''}
-                    <div>
-                        <div class="title">${post.title.rendered}</div>
-                        <div class="meta">${new Date(post.date).toLocaleDateString()}</div>
-                    </div>
-                `;
-                card.onclick = () => { trackActionWithAd(); openPost(post.id); };
-                postsContainer.appendChild(card);
-            });
-            page++;
-            if(!hasMore) loader.innerHTML = "End of feed.";
-        }
-    } catch (e) {
-        hasMore = false;
-        loader.innerHTML = "Error loading posts.";
-    } finally {
-        isFetching = false;
+            // Ads between cards
+            const ad = document.createElement('div');
+            ad.className = 'ad-box';
+            ad.innerHTML = `<iframe src="${MAIN_AD_URL}" style="width:100%;height:250px;border:0" loading="lazy"></iframe>`;
+            postsContainer.appendChild(ad);
+
+            // Post Card
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                ${img ? `<img class="thumb" src="${img}" loading="lazy">` : ''}
+                <div>
+                    <div class="title">${post.title.rendered}</div>
+                    <div class="meta">${new Date(post.date).toLocaleDateString()}</div>
+                </div>
+            `;
+            card.onclick = () => { trackActionWithAd(); openPost(post.id); };
+            postsContainer.appendChild(card);
+        });
+    } catch(e) {
+        postsContainer.innerHTML = "<div style='text-align:center;color:red;'>Error loading posts.</div>";
+        console.error(e);
     }
 }
-
-// Scroll detection using IntersectionObserver
-const observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && hasMore) {
-        loadPosts();
-    }
-}, { rootMargin: '300px' }); // Load next batch when 300px from bottom
-
-observer.observe(loader);
 
 // Search Handling
 searchInput.addEventListener('input', (e) => {
     currentSearch = e.target.value;
-    loadPosts(true);
+    loadPosts();
 });
 
 function openPost(id) {
@@ -204,7 +166,6 @@ function openPost(id) {
 }
 
 async function renderSingle(id) {
-    loader.style.display = 'none';
     const res = await fetch(`${API_BASE}&include=${id}`);
     const post = (await res.json())[0];
     const img = post.schema?.thumbnailUrl || post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
@@ -241,6 +202,5 @@ function init() {
 window.onpopstate = () => location.reload();
 init();
 </script>
-
 </body>
 </html>
