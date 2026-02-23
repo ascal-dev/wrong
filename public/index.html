@@ -98,7 +98,7 @@ const API_BASE = 'https://leakemms.ascalrack.workers.dev/?url=https://www.soniya
 const PER_PAGE = 10; 
 const MAIN_AD_URL = 'https://www.effectivegatecpm.com/udpve945?key=7cd66743658c606e293d255b9b789ef5';
 const POPUNDER_SCRIPT = 'https://pl28772002.effectivegatecpm.com/8e/59/71/8e5971f333df02f76a99caef6bfba4e3.js';
-const ACTION_LIMIT = 1; // Trigger ad every 2 clicks
+const ACTION_LIMIT = 1; // Trigger ad every 1 click
 
 let page = 1;
 let totalPages = 1;
@@ -136,12 +136,9 @@ function loadPopunder(){
   document.body.appendChild(s);
 }
 
-// THE CLICK TRACKER: Triggers ad every 2nd click
 function trackActionWithAd(){
   actionCount++;
   if(actionCount === 1) loadPopunder();
-  
-  // Every 2nd click triggers the popup
   if(actionCount % ACTION_LIMIT === 0) {
     window.open(MAIN_AD_URL, '_blank');
   }
@@ -165,8 +162,18 @@ function route(){
 }
 
 /* GET THUMBNAIL */
-function getThumb(p){
-  return p.schema?.thumbnailUrl || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+async function getThumb(p){
+  // First try embedded media
+  let thumb = p._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+  // If missing, fetch featured_media
+  if(!thumb && p.featured_media){
+    try{
+      const r = await fetch(`https://www.soniyabedi.in/blog/wp-json/wp/v2/media/${p.featured_media}`);
+      const data = await r.json();
+      thumb = data.source_url;
+    }catch(e){ thumb = ''; }
+  }
+  return thumb || '';
 }
 
 /* LOAD POSTS LIST */
@@ -178,15 +185,16 @@ async function loadPosts(){
   const d = await r.json();
   posts.innerHTML = '';
 
-  d.forEach((p,i)=>{
-    const img = getThumb(p);
+  for(let i=0; i<d.length; i++){
+    const p = d[i];
+    const img = await getThumb(p);
 
-    // Inline Ad every few posts
-    if(i % 3 === 0) {
-        const adTop = document.createElement('div');
-        adTop.className='ad-box';
-        adTop.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
-        posts.appendChild(adTop);
+    // Inline Ad every 3 posts
+    if(i % 3 === 0){
+      const adTop = document.createElement('div');
+      adTop.className='ad-box';
+      adTop.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
+      posts.appendChild(adTop);
     }
 
     const c = document.createElement('div');
@@ -194,14 +202,13 @@ async function loadPosts(){
     c.innerHTML = img
       ? `<img class="thumb" src="${img}"><div><div class="title">${p.title.rendered}</div><div class="meta">${new Date(p.date).toLocaleString()}</div></div>`
       : `<div class="title">${p.title.rendered}</div>`;
-    
-    // CLICK POST ACTION
+
     c.addEventListener('click',()=>{ 
         trackActionWithAd(); 
         openPost(p.id); 
     });
     posts.appendChild(c);
-  });
+  }
 
   renderPagination();
 }
@@ -211,51 +218,49 @@ function renderPagination(){
   const container = document.createElement('div');
   container.className = 'pagination';
 
-  // Previous
   const prevBtn = document.createElement('button');
   prevBtn.textContent = 'Prev';
   prevBtn.disabled = page <= 1;
   prevBtn.addEventListener('click', () => {
-    trackActionWithAd(); // Click track
-    if(page > 1) {
+    trackActionWithAd();
+    if(page > 1){
       page--;
-      history.pushState({}, '', `?page=${page}`);
+      history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
       loadPosts();
     }
   });
   container.appendChild(prevBtn);
 
-  // Next
   const nextBtn = document.createElement('button');
   nextBtn.textContent = 'Next';
   nextBtn.disabled = page >= totalPages;
   nextBtn.addEventListener('click', () => {
-    trackActionWithAd(); // Click track
+    trackActionWithAd();
     if(page < totalPages){
       page++;
-      history.pushState({}, '', `?page=${page}`);
+      history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
       loadPosts();
     }
   });
   container.appendChild(nextBtn);
 
-  // Go input logic
-  const goBtn = document.createElement('button');
-  goBtn.textContent = 'Go';
   const goInput = document.createElement('input');
-  goInput.type = 'number';
-  goInput.value = page;
-  goInput.style.width = '50px';
+  goInput.type='number';
+  goInput.value=page;
+  goInput.style.width='50px';
 
-  goBtn.addEventListener('click', () => {
-    trackActionWithAd(); // Click track
+  const goBtn = document.createElement('button');
+  goBtn.textContent='Go';
+  goBtn.addEventListener('click', ()=>{
+    trackActionWithAd();
     let val = parseInt(goInput.value);
-    if(val >= 1 && val <= totalPages){
-      page = val;
-      history.pushState({}, '', `?page=${page}`);
+    if(val>=1 && val<=totalPages){
+      page=val;
+      history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
       loadPosts();
     }
   });
+
   container.appendChild(goInput);
   container.appendChild(goBtn);
 
@@ -273,7 +278,7 @@ async function loadSingle(id){
   const r = await fetch(`${API_BASE}&include=${id}`);
   const data = await r.json();
   const p = data[0];
-  const img = getThumb(p);
+  const img = await getThumb(p);
   const firstPara = p.content.rendered.match(/<p>[\s\S]*?<\/p>/i)?.[0]||'';
   const mp4s = [...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
 
@@ -285,9 +290,7 @@ async function loadSingle(id){
       <h1>${p.title.rendered}</h1>
       <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
       ${firstPara}
-      <div class="ad-box">
-        <iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>
-      </div>
+      <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe></div>
       ${mp4s.map((u,i)=>`
         <div class="video-link" id="vid-btn-${i}">
           <div class="play">▶</div>
@@ -298,30 +301,28 @@ async function loadSingle(id){
     </div>
   `;
 
-  // BACK BUTTON LISTENER
-  document.getElementById('back-btn').addEventListener('click', () => {
-      trackActionWithAd();
-      history.back();
+  document.getElementById('back-btn').addEventListener('click', ()=>{
+    trackActionWithAd();
+    history.back();
   });
 
-  // VIDEO CLICK LISTENERS
-  mp4s.forEach((u, i) => {
-      document.getElementById(`vid-btn-${i}`).addEventListener('click', () => {
-          playVideo(u, i);
-      });
+  mp4s.forEach((u,i)=>{
+    document.getElementById(`vid-btn-${i}`).addEventListener('click', ()=>{
+      playVideo(u,i);
+    });
   });
 }
 
 /* PLAY VIDEO */
 function playVideo(url,i){
-  trackActionWithAd(); // Every video play attempt is a trackable click
-  document.getElementById('player-'+i).innerHTML=`<video controls autoplay src="${url}"></video>`;
+  trackActionWithAd();
+  document.getElementById(`player-${i}`).innerHTML=`<video controls autoplay src="${url}"></video>`;
 }
 
 /* SEARCH HANDLER */
 document.getElementById('search').addEventListener('keyup', (e)=>{
   if(e.key==='Enter'){
-    trackActionWithAd(); // Entering search counts
+    trackActionWithAd();
     search = e.target.value;
     page = 1;
     history.pushState({}, '', `?page=${page}&search=${encodeURIComponent(search)}`);
