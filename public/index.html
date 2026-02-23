@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WP JSON Fast Blog - Unlimited Scroll</title>
+<title>WP JSON Fast Blog - All Posts</title>
 <style>
-/* PRESERVED ORIGINAL STYLING */
 :root{
   --bg:#f5f7fb;--card:#fff;--text:#111827;
   --muted:#6b7280;--primary:#2563eb;
@@ -83,8 +82,6 @@ video{width:100%;margin-top:10px;border-radius:14px}
 </header>
 
 <main id="posts"></main>
-
-<div id="loader">Loading more content...</div>
 
 <script>
 /* CONFIG */
@@ -202,5 +199,6 @@ function init() {
 window.onpopstate = () => location.reload();
 init();
 </script>
+
 </body>
 </html>
