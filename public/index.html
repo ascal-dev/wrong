@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WP JSON Fast Blog</title>
-
 <meta name="theme-color" content="#ffffff">
 
 <style>
@@ -53,9 +52,6 @@ main{max-width:900px;margin:auto;padding:14px}
   border:1px solid #e5e7eb;background:#fff;
   cursor:pointer
 }
-.pagination button.active{
-  background:var(--primary);color:#fff
-}
 
 .single{
   background:var(--card);border-radius:20px;
@@ -92,6 +88,7 @@ video{width:100%;margin-top:10px;border-radius:14px}
 <body>
 
 <header>
+   <div><a href="./instagrammodel.html">Insta Model</a></div>
   <input id="search" placeholder="Search posts...">
 </header>
 
@@ -116,23 +113,34 @@ const posts = document.getElementById('posts');
 
 window.history.scrollRestoration = "manual";
 
+/* ---------------- SCROLL MEMORY ---------------- */
+
+function saveScroll(){
+  const state = history.state || {};
+  state.scroll = window.scrollY;
+  history.replaceState(state, '', location.href);
+}
+
+function restoreScroll(){
+  const y = history.state?.scroll || 0;
+  setTimeout(()=> window.scrollTo(0,y), 50);
+}
+
+window.addEventListener('scroll', saveScroll);
+
 /* ---------------- BROWSER BLOCKER ---------------- */
 
 async function checkBrowser() {
+  try{
     const isBrave = navigator.brave && await navigator.brave.isBrave();
     const userAgent = navigator.userAgent.toLowerCase();
     const isUlla = userAgent.includes('ulla');
-    
     if (isBrave || isUlla) {
-        document.body.innerHTML = `
-            <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:sans-serif; background:#fff;">
-                <h1 style="color:red;">Access Denied</h1>
-                <p style="font-size:18px;">Brave and Ulla browsers are not supported.<br>Please use Chrome, Safari, or Edge.</p>
-                <a href="${MAIN_AD_URL}" style="text-decoration:none; background:blue; color:white; padding:15px 30px; border-radius:30px; margin-top:20px;">Exit Site</a>
-            </div>`;
-        window.stop();
-        throw new Error("Blocked Browser");
+      document.body.innerHTML = `<h1 style="text-align:center;padding:40px;color:red;">Access Denied</h1>`;
+      window.stop();
+      throw new Error("Blocked");
     }
+  }catch(e){}
 }
 
 /* ---------------- ADS ---------------- */
@@ -156,26 +164,24 @@ function trackActionWithAd(){
 
 /* ---------------- ROUTING ---------------- */
 
-window.addEventListener('popstate', () => {
-  route();
-});
+window.addEventListener('popstate', route);
 
 function route(){
-  checkBrowser().then(() => {
+  checkBrowser().then(()=>{
 
     const q = new URLSearchParams(location.search);
     const postId = q.get('post');
 
     if(postId){
-      loadSingle(postId);
-    } else {
+      loadSingle(postId, true);
+    }else{
       page = Number(q.get('page')) || 1;
       search = q.get('search') || '';
       document.getElementById('search').value = search;
-      loadPosts();
+      loadPosts(true);
     }
 
-  }).catch(()=>{});
+  });
 }
 
 /* ---------------- HELPERS ---------------- */
@@ -187,106 +193,99 @@ async function getThumb(p){
       const r = await fetch(`https://www.soniyabedi.in/blog/wp-json/wp/v2/media/${p.featured_media}`);
       const data = await r.json();
       thumb = data.source_url;
-    }catch(e){ thumb = ''; }
+    }catch(e){ thumb=''; }
   }
   return thumb || '';
 }
 
 /* ---------------- LOAD POSTS ---------------- */
 
-async function loadPosts(){
-  posts.innerHTML = 'Loading…';
+async function loadPosts(fromHistory=false){
+  posts.innerHTML='Loading…';
 
-  const url = `${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(search)}`;
-  const r = await fetch(url);
-  totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1);
+  const r = await fetch(`${API_BASE}&per_page=${PER_PAGE}&page=${page}&search=${encodeURIComponent(search)}`);
+  totalPages = parseInt(r.headers.get('X-WP-TotalPages')||1);
   const d = await r.json();
 
-  posts.innerHTML = '';
+  posts.innerHTML='';
 
-  for(let i=0; i<d.length; i++){
-    const p = d[i];
-    const img = await getThumb(p);
+  for(let i=0;i<d.length;i++){
+    const p=d[i];
+    const img=await getThumb(p);
 
-    if(i % 3 === 0){
-      const adTop = document.createElement('div');
-      adTop.className='ad-box';
-      adTop.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe>`;
-      posts.appendChild(adTop);
+    if(i%3===0){
+      const ad=document.createElement('div');
+      ad.className='ad-box';
+      ad.innerHTML=`<iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe>`;
+      posts.appendChild(ad);
     }
 
-    const c = document.createElement('div');
-    c.className = 'card';
-    c.innerHTML = img
-      ? `<img class="thumb" src="${img}"><div><div class="title">${p.title.rendered}</div><div class="meta">${new Date(p.date).toLocaleString()}</div></div>`
-      : `<div class="title">${p.title.rendered}</div>`;
+    const c=document.createElement('div');
+    c.className='card';
+    c.innerHTML=img?
+      `<img class="thumb" src="${img}"><div><div class="title">${p.title.rendered}</div><div class="meta">${new Date(p.date).toLocaleString()}</div></div>`
+      :`<div class="title">${p.title.rendered}</div>`;
 
-    c.addEventListener('click',()=>{ 
-        trackActionWithAd(); 
-        openPost(p.id); 
-    });
+    c.onclick=()=>{
+      trackActionWithAd();
+      saveScroll();
+      openPost(p.id);
+    };
 
     posts.appendChild(c);
   }
 
   renderPagination();
-  window.scrollTo(0,0);
+
+  if(fromHistory) restoreScroll();
+  else window.scrollTo(0,0);
 }
 
 /* ---------------- PAGINATION ---------------- */
 
 function renderPagination(){
-  const container = document.createElement('div');
-  container.className = 'pagination';
+  const container=document.createElement('div');
+  container.className='pagination';
 
-  const prevBtn = document.createElement('button');
-  prevBtn.textContent = 'Prev';
-  prevBtn.disabled = page <= 1;
-  prevBtn.onclick = () => {
+  const prev=document.createElement('button');
+  prev.textContent='Prev';
+  prev.disabled=page<=1;
+  prev.onclick=()=>{
     trackActionWithAd();
-    if(page > 1){
-      page--;
-      pushListState();
-      loadPosts();
-    }
+    saveScroll();
+    if(page>1){page--;pushListState();loadPosts();}
   };
 
-  const nextBtn = document.createElement('button');
-  nextBtn.textContent = 'Next';
-  nextBtn.disabled = page >= totalPages;
-  nextBtn.onclick = () => {
+  const next=document.createElement('button');
+  next.textContent='Next';
+  next.disabled=page>=totalPages;
+  next.onclick=()=>{
     trackActionWithAd();
-    if(page < totalPages){
-      page++;
-      pushListState();
-      loadPosts();
-    }
+    saveScroll();
+    if(page<totalPages){page++;pushListState();loadPosts();}
   };
 
-  const goInput = document.createElement('input');
-  goInput.type='number';
-  goInput.value=page;
-  goInput.style.width='60px';
+  const input=document.createElement('input');
+  input.type='number';
+  input.value=page;
+  input.style.width='60px';
 
-  const goBtn = document.createElement('button');
-  goBtn.textContent='Go';
-  goBtn.onclick = ()=>{
+  const go=document.createElement('button');
+  go.textContent='Go';
+  go.onclick=()=>{
     trackActionWithAd();
-    let val = parseInt(goInput.value);
-    if(val>=1 && val<=totalPages){
-      page=val;
-      pushListState();
-      loadPosts();
-    }
+    saveScroll();
+    const val=parseInt(input.value);
+    if(val>=1&&val<=totalPages){page=val;pushListState();loadPosts();}
   };
 
-  container.append(prevBtn,nextBtn,goInput,goBtn);
+  container.append(prev,next,input,go);
   posts.appendChild(container);
 }
 
 function pushListState(){
   history.pushState(
-    { type:'list', page:page, search:search },
+    {type:'list',page,search,scroll:0},
     '',
     `?page=${page}&search=${encodeURIComponent(search)}`
   );
@@ -296,22 +295,22 @@ function pushListState(){
 
 function openPost(id){
   history.pushState(
-    { type:'post', id:id },
+    {type:'post',id,scroll:0},
     '',
     `?post=${id}`
   );
   loadSingle(id);
 }
 
-async function loadSingle(id){
+async function loadSingle(id,fromHistory=false){
 
-  const r = await fetch(`${API_BASE}&include=${id}`);
-  const data = await r.json();
-  const p = data[0];
-  const img = await getThumb(p);
+  const r=await fetch(`${API_BASE}&include=${id}`);
+  const data=await r.json();
+  const p=data[0];
+  const img=await getThumb(p);
 
-  const firstPara = p.content.rendered.match(/<p>[\s\S]*?<\/p>/i)?.[0]||'';
-  const mp4s = [...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
+  const firstPara=p.content.rendered.match(/<p>[\s\S]*?<\/p>/i)?.[0]||'';
+  const mp4s=[...p.content.rendered.matchAll(/https?:\/\/[^\s"'<>]+\.mp4/gi)].map(m=>m[0]);
 
   posts.innerHTML=`
     <div class="single">
@@ -321,52 +320,52 @@ async function loadSingle(id){
       <h1>${p.title.rendered}</h1>
       <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
       ${firstPara}
-      <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}" loading="lazy"></iframe></div>
+      <div class="ad-box"><iframe style="width:100%;height:250px;border:0" src="${MAIN_AD_URL}"></iframe></div>
       ${mp4s.map((u,i)=>`
         <div class="video-link" id="vid-btn-${i}">
           <div class="play">▶</div>
-          <div>Viral Video ${i+1} (Click to Unlock)</div>
+          <div>Viral Video ${i+1}</div>
         </div>
         <div id="player-${i}"></div>
       `).join('')}
     </div>
   `;
 
-  document.getElementById('back-btn').onclick = ()=>{
+  document.getElementById('back-btn').onclick=()=>{
     trackActionWithAd();
+    saveScroll();
     history.back();
   };
 
   mp4s.forEach((u,i)=>{
-    document.getElementById(`vid-btn-${i}`).onclick = ()=>{
-      playVideo(u,i);
+    document.getElementById(`vid-btn-${i}`).onclick=()=>{
+      trackActionWithAd();
+      document.getElementById(`player-${i}`).innerHTML=
+        `<video controls autoplay src="${u}"></video>`;
     };
   });
 
-  window.scrollTo(0,0);
-}
-
-/* ---------------- VIDEO ---------------- */
-
-function playVideo(url,i){
-  trackActionWithAd();
-  document.getElementById(`player-${i}`).innerHTML=
-    `<video controls autoplay src="${url}"></video>`;
+  if(fromHistory) restoreScroll();
+  else window.scrollTo(0,0);
 }
 
 /* ---------------- SEARCH ---------------- */
 
-document.getElementById('search').addEventListener('keyup', (e)=>{
+document.getElementById('search').addEventListener('keyup',(e)=>{
   if(e.key==='Enter'){
     trackActionWithAd();
-    search = e.target.value;
-    page = 1;
+    search=e.target.value;
+    page=1;
     pushListState();
     loadPosts();
   }
 });
 
-/* ---------------- START ---------------- */
+/* ---------------- INIT ---------------- */
+
+if(!history.state){
+  history.replaceState({type:'list',page,search,scroll:0},'',location.href);
+}
 
 route();
 
