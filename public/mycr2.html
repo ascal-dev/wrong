@@ -1,10 +1,10 @@
-```html
 <!DOCTYPE html>
 <html>
+
 <head>
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Streaming App</title>
+<title>Streaming Library</title>
 
 <style>
 
@@ -52,11 +52,6 @@ background:#1a1a1a;
 border-radius:10px;
 overflow:hidden;
 cursor:pointer;
-transition:.3s;
-}
-
-.card:hover{
-transform:scale(1.05);
 }
 
 .card img{
@@ -82,21 +77,6 @@ width:100%;
 max-width:500px;
 display:block;
 margin:auto;
-border-radius:8px;
-}
-
-.date{
-color:#aaa;
-margin-top:8px;
-}
-
-.back{
-background:#e50914;
-border:none;
-color:white;
-padding:8px 15px;
-cursor:pointer;
-margin-bottom:15px;
 }
 
 .playerBox{
@@ -121,8 +101,14 @@ color:white;
 cursor:pointer;
 }
 
-.content img{
-max-width:100%;
+.extractbtn{
+background:#2196F3;
+margin-left:10px;
+}
+
+.linkBox{
+background:#1a1a1a;
+padding:10px;
 margin-top:10px;
 border-radius:6px;
 }
@@ -133,9 +119,7 @@ border-radius:6px;
 
 <body>
 
-<header>
-Streaming Library
-</header>
+<header>Streaming Library</header>
 
 <div class="menu">
 
@@ -149,15 +133,64 @@ Streaming Library
 
 <div id="postPage"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
 <script>
 
 const API="https://ddose007.info.in/wp-json/wp/v2"
+const PROXY="https://allinone.godess.workers.dev/?url="
+
+let currentSources=[]
+let hlsInstance=null
+
+console.log("APP STARTED")
 
 loadCategories()
 loadLatest()
 
+/* ---------------- PROXY FETCH ---------------- */
 
-/* load categories */
+async function proxyFetch(url){
+
+console.log("Proxy fetch:",url)
+
+let res=await fetch(PROXY+encodeURIComponent(url))
+
+let text=await res.text()
+
+return text
+
+}
+
+/* ---------------- REDIRECT FOLLOWER ---------------- */
+
+async function followRedirect(url){
+
+console.log("Redirect start:",url)
+
+let final=url
+
+for(let i=0;i<6;i++){
+
+let r=await fetch(PROXY+encodeURIComponent(final),{
+redirect:"follow"
+})
+
+console.log("Redirect step",i,"->",r.url)
+
+if(r.url===final) break
+
+final=r.url
+
+}
+
+console.log("Final stream:",final)
+
+return final
+
+}
+
+/* ---------------- CATEGORIES ---------------- */
 
 async function loadCategories(){
 
@@ -174,8 +207,7 @@ document.getElementById("categories").innerHTML=html
 
 }
 
-
-/* load latest posts */
+/* ---------------- POSTS ---------------- */
 
 async function loadLatest(){
 
@@ -186,9 +218,6 @@ renderPosts(posts)
 
 }
 
-
-/* load posts by category */
-
 async function loadPosts(id){
 
 let res=await fetch(API+"/posts?categories="+id+"&_embed")
@@ -197,9 +226,6 @@ let posts=await res.json()
 renderPosts(posts)
 
 }
-
-
-/* render post cards */
 
 function renderPosts(posts){
 
@@ -213,9 +239,7 @@ posts.forEach(p=>{
 let img=""
 
 if(p._embedded && p._embedded["wp:featuredmedia"]){
-
 img=p._embedded["wp:featuredmedia"][0].source_url
-
 }
 
 html+=`
@@ -223,7 +247,6 @@ html+=`
 <div class="card" onclick="openPost(${p.id})">
 
 <img src="${img}">
-
 <h3>${p.title.rendered}</h3>
 
 </div>
@@ -236,9 +259,7 @@ document.getElementById("posts").innerHTML=html
 
 }
 
-
-
-/* open post */
+/* ---------------- OPEN POST ---------------- */
 
 async function openPost(id){
 
@@ -248,9 +269,7 @@ let post=await res.json()
 let img=""
 
 if(post._embedded && post._embedded["wp:featuredmedia"]){
-
 img=post._embedded["wp:featuredmedia"][0].source_url
-
 }
 
 document.getElementById("posts").style.display="none"
@@ -258,155 +277,236 @@ document.getElementById("postPage").style.display="block"
 
 let content=post.content.rendered
 
-let streamLinks=extractStreams(content)
+let links=extractLinks(content)
 
-let playerHTML=""
+let linkHTML=""
 
-if(streamLinks.length>0){
+links.forEach(l=>{
 
-playerHTML=`
+if(isDownloadHost(l)) return
 
-<div class="playerBox">
+linkHTML+=`
 
-<video id="player" controls></video>
+<div class="linkBox">
 
-<div id="streamButtons"></div>
+${l}
+
+<button class="extractbtn" onclick="extractStream('${l}')">
+Extract
+</button>
 
 </div>
 
 `
 
-}
+})
 
 document.getElementById("postPage").innerHTML=`
 
-<button class="back" onclick="back()">Back</button>
+<button onclick="back()">Back</button>
 
 <img class="poster" src="${img}">
 
 <h2>${post.title.rendered}</h2>
 
-<div class="date">
-${new Date(post.date).toLocaleString()}
+<div class="playerBox">
+
+<video id="player" controls></video>
+
+<div id="qualityBox"></div>
+
 </div>
 
-${playerHTML}
+<h3>Links</h3>
 
-<div class="content">
-${content}
-</div>
+${linkHTML}
 
 `
 
-if(streamLinks.length>0){
-
-renderStreamButtons(streamLinks)
-
 }
 
-}
+/* ---------------- LINK SCAN ---------------- */
 
+function extractLinks(html){
 
+let urls=new Set()
 
-/* extract links */
-
-function extractStreams(html){
-
-let urls=[]
-
-/* direct mp4/m3u8 */
-
-let regex=/https?:\/\/[^"' ]+\.(m3u8|mp4)/g
+let regex=/(https?:\/\/[^"'<> ]+)/g
 let match
 
 while((match=regex.exec(html))!==null){
-urls.push(match[0])
+
+let url=match[1]
+
+if(!isDownloadHost(url)){
+urls.add(url)
 }
-
-/* vidnest / lulu embed pages */
-
-let embedRegex=/https?:\/\/[^"' ]+(vidnest|luluvdoo|lulu)[^"' ]+/g
-
-while((match=embedRegex.exec(html))!==null){
-urls.push(match[0])
-}
-
-return urls
 
 }
 
+console.log("Links found:",[...urls])
 
-
-/* render buttons */
-
-function renderStreamButtons(streams){
-
-let html=""
-
-streams.forEach((s,i)=>{
-
-html+=`<button class="playbtn" onclick="playStream('${s}')">Play Stream ${i+1}</button>`
-
-})
-
-document.getElementById("streamButtons").innerHTML=html
+return [...urls]
 
 }
 
+/* ---------------- DOWNLOAD HOST FILTER ---------------- */
 
+function isDownloadHost(url){
 
-/* play stream */
+let blocked=[
+"upfileas",
+"uploadmall",
+"dropgalaxy",
+"freedl"
+]
 
-async function playStream(url){
+return blocked.some(h=>url.includes(h))
 
-let player=document.getElementById("player")
+}
 
-/* direct stream */
+/* ---------------- STREAM EXTRACTION ---------------- */
 
-if(url.includes(".mp4") || url.includes(".m3u8")){
+async function extractStream(link){
 
-player.src=url
-player.play()
+console.log("Extracting:",link)
 
+let html=await proxyFetch(link)
+
+/* JWPLAYER HOSTS */
+
+if(link.includes("vidnest") || link.includes("lulu") || link.includes("luluvdoo")){
+extractJW(html)
 return
 }
 
+/* STRCLOUD FAMILY */
 
-/* vidnest / lulu extraction */
+if(link.includes("strcloud") || link.includes("advertape") || link.includes("tapeadsenjoyer")){
+extractStrcloud(html)
+return
+}
 
-if(url.includes("vidnest") || url.includes("luluvdoo") || url.includes("lulu")){
+console.log("Host not supported")
 
-try{
+}
 
-let res=await fetch(url)
-let text=await res.text()
+/* ---------------- JWPLAYER PARSER ---------------- */
 
-let match=text.match(/file\s*:\s*"(https:[^"]+)"/)
+function extractJW(html){
 
-if(match){
+console.log("JW parser")
 
-player.src=match[1]
-player.play()
+let fileRegex=/file\s*:\s*"([^"]+)"/g
+let labelRegex=/label\s*:\s*"([^"]+)"/g
+
+let files=[...html.matchAll(fileRegex)]
+let labels=[...html.matchAll(labelRegex)]
+
+currentSources=[]
+
+for(let i=0;i<files.length;i++){
+
+currentSources.push({
+file:files[i][1],
+label:labels[i] ? labels[i][1] : "auto"
+})
+
+}
+
+console.log("Sources:",currentSources)
+
+if(currentSources.length>0){
+
+renderQualityButtons()
+playStream(currentSources[0].file)
+
+}
+
+}
+
+/* ---------------- STRCLOUD PARSER ---------------- */
+
+async function extractStrcloud(html){
+
+console.log("Strcloud extractor")
+
+let match=html.match(/id="(?:captchalink|norobotlink)"[^>]*>(.*?)</)
+
+if(!match){
+console.log("No redirect found")
+return
+}
+
+let url=match[1]
+
+url=url.replace(/&amp;/g,"&")
+
+if(url.startsWith("//")) url="https:"+url
+if(url.startsWith("/")) url="https:"+url
+
+console.log("Extracted redirect:",url)
+
+let final=await followRedirect(url)
+
+playStream(final)
+
+}
+
+/* ---------------- PLAYER ---------------- */
+
+function playStream(url){
+
+console.log("Playing:",url)
+
+let player=document.getElementById("player")
+
+if(hlsInstance){
+hlsInstance.destroy()
+hlsInstance=null
+}
+
+if(url.includes(".m3u8")){
+
+if(Hls.isSupported()){
+
+hlsInstance=new Hls()
+
+hlsInstance.loadSource(url)
+
+hlsInstance.attachMedia(player)
 
 }else{
 
-alert("Stream not found")
+player.src=url
 
 }
 
-}catch(e){
+}else{
 
-alert("Stream extraction failed")
-
-}
+player.src=url
 
 }
 
+player.play()
+
 }
 
+/* ---------------- QUALITY BUTTONS ---------------- */
 
+function renderQualityButtons(){
 
-/* back button */
+let html=""
+
+currentSources.forEach(s=>{
+html+=`<button class="playbtn" onclick="playStream('${s.file}')">${s.label}</button>`
+})
+
+document.getElementById("qualityBox").innerHTML=html
+
+}
+
+/* ---------------- BACK ---------------- */
 
 function back(){
 
@@ -420,4 +520,3 @@ document.getElementById("posts").style.display="grid"
 </body>
 
 </html>
-```
