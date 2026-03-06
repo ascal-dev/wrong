@@ -172,7 +172,7 @@ let final=url
 
 for(let i=0;i<6;i++){
 
-let r=await fetch(final),{
+let r=await fetch(PROXY+encodeURIComponent(final),{
 redirect:"follow"
 })
 
@@ -431,7 +431,7 @@ async function extractStrcloud(html){
 
 console.log("Strcloud extractor")
 
-let match=html.match(/id="(?:captchalink|norobotlink)"[^>]*>(.*?)</)
+let match=html.match(/id="(?:ideoooolink|captchalink|norobotlink)"[^>]*>(.*?)</)
 
 if(!match){
 console.log("No redirect found")
