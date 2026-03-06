@@ -1,0 +1,528 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Streaming Library</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+
+body{
+margin:0;
+background:#0b0b0b;
+font-family:Arial;
+color:white;
+}
+
+header{
+background:black;
+padding:15px;
+text-align:center;
+font-size:22px;
+}
+
+.menu{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+padding:10px;
+background:#111;
+justify-content:center;
+}
+
+.menu button{
+padding:8px 14px;
+background:#e50914;
+border:none;
+color:white;
+border-radius:4px;
+cursor:pointer;
+}
+
+.search{
+padding:8px;
+border:none;
+border-radius:4px;
+width:200px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+gap:15px;
+padding:20px;
+}
+
+.card{
+background:#1a1a1a;
+border-radius:10px;
+overflow:hidden;
+cursor:pointer;
+transition:.2s;
+}
+
+.card:hover{
+transform:scale(1.05);
+}
+
+.card img{
+width:100%;
+height:250px;
+object-fit:cover;
+}
+
+.card h3{
+font-size:14px;
+padding:10px;
+}
+
+#postPage{
+display:none;
+padding:20px;
+max-width:1000px;
+margin:auto;
+}
+
+.poster{
+width:100%;
+max-width:400px;
+border-radius:8px;
+display:block;
+margin:auto;
+}
+
+.playerBox{
+margin-top:20px;
+background:black;
+padding:10px;
+border-radius:10px;
+}
+
+video{
+width:100%;
+max-height:520px;
+background:black;
+}
+
+.controls{
+margin-top:10px;
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.controls button{
+background:#e50914;
+border:none;
+padding:8px 12px;
+color:white;
+border-radius:4px;
+cursor:pointer;
+}
+
+.back{
+background:#e50914;
+border:none;
+padding:8px 12px;
+color:white;
+cursor:pointer;
+margin-bottom:15px;
+}
+
+.extractBtn{
+margin-left:8px;
+background:#e50914;
+border:none;
+padding:5px 10px;
+color:white;
+cursor:pointer;
+border-radius:4px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>Streaming Library</header>
+
+<div class="menu">
+
+<button onclick="loadLatest()">Latest</button>
+
+<input class="search" placeholder="Search..." onkeyup="searchPosts(this.value)">
+
+<div id="categories"></div>
+
+</div>
+
+<div id="posts" class="grid"></div>
+
+<div id="postPage"></div>
+
+<script>
+
+const API="https://ddose007.info.in/wp-json/wp/v2"
+
+let cachePosts=[]
+let currentStreams=[]
+let currentIndex=0
+
+init()
+
+async function init(){
+
+await loadCategories()
+await loadLatest()
+
+}
+
+/* load categories */
+
+async function loadCategories(){
+
+let res=await fetch(API+"/categories")
+let data=await res.json()
+
+let html=""
+
+data.forEach(c=>{
+html+=`<button onclick="loadPosts(${c.id})">${c.name}</button>`
+})
+
+document.getElementById("categories").innerHTML=html
+
+}
+
+/* latest posts */
+
+async function loadLatest(){
+
+let res=await fetch(API+"/posts?_embed&per_page=40")
+let posts=await res.json()
+
+cachePosts=posts
+renderPosts(posts)
+
+}
+
+/* category posts */
+
+async function loadPosts(id){
+
+let res=await fetch(API+"/posts?categories="+id+"&_embed&per_page=40")
+let posts=await res.json()
+
+cachePosts=posts
+renderPosts(posts)
+
+}
+
+/* search */
+
+function searchPosts(q){
+
+q=q.toLowerCase()
+
+let filtered=cachePosts.filter(p=>p.title.rendered.toLowerCase().includes(q))
+
+renderPosts(filtered)
+
+}
+
+/* render posts */
+
+function renderPosts(posts){
+
+document.getElementById("postPage").style.display="none"
+document.getElementById("posts").style.display="grid"
+
+let html=""
+
+posts.forEach(p=>{
+
+let img=""
+
+if(p._embedded && p._embedded["wp:featuredmedia"])
+img=p._embedded["wp:featuredmedia"][0].source_url
+
+html+=`
+
+<div class="card" onclick="openPost(${p.id})">
+
+<img src="${img}">
+<h3>${p.title.rendered}</h3>
+
+</div>
+
+`
+
+})
+
+document.getElementById("posts").innerHTML=html
+
+}
+
+/* open post */
+
+async function openPost(id){
+
+let res=await fetch(API+"/posts/"+id+"?_embed")
+let post=await res.json()
+
+let img=""
+
+if(post._embedded && post._embedded["wp:featuredmedia"])
+img=post._embedded["wp:featuredmedia"][0].source_url
+
+let content=addExtractionButtons(post.content.rendered)
+
+currentStreams=extractStreams(post.content.rendered)
+let subtitles=extractSubtitles(post.content.rendered)
+
+document.getElementById("posts").style.display="none"
+document.getElementById("postPage").style.display="block"
+
+document.getElementById("postPage").innerHTML=`
+
+<button class="back" onclick="back()">Back</button>
+
+<img class="poster" src="${img}">
+
+<h2>${post.title.rendered}</h2>
+
+<div class="playerBox">
+
+<video id="player" controls></video>
+
+<div class="controls">
+
+<button onclick="playStream(0)">Play</button>
+
+<button onclick="nextEpisode()">Next Episode</button>
+
+<div id="quality"></div>
+
+</div>
+
+</div>
+
+<div>${content}</div>
+
+`
+
+renderQuality()
+renderSubtitles(subtitles)
+
+}
+
+/* extract streams */
+
+function extractStreams(html){
+
+let urls=[]
+let regex=/https?:\/\/[^"' ]+\.(m3u8|mp4)/g
+let match
+
+while((match=regex.exec(html))!==null){
+urls.push(match[0])
+}
+
+return urls
+
+}
+
+/* subtitle detection */
+
+function extractSubtitles(html){
+
+let subs=[]
+let regex=/https?:\/\/[^"' ]+\.(vtt|srt)/g
+let match
+
+while((match=regex.exec(html))!==null){
+subs.push(match[0])
+}
+
+return subs
+
+}
+
+/* render subtitle tracks */
+
+function renderSubtitles(subs){
+
+let player=document.getElementById("player")
+
+subs.forEach(s=>{
+
+let track=document.createElement("track")
+
+track.kind="subtitles"
+track.src=s
+track.default=true
+
+player.appendChild(track)
+
+})
+
+}
+
+/* quality buttons */
+
+function renderQuality(){
+
+let html=""
+
+currentStreams.forEach((s,i)=>{
+
+let label="Stream "+(i+1)
+
+if(s.includes("1080")) label="1080p"
+if(s.includes("720")) label="720p"
+if(s.includes("360")) label="360p"
+
+html+=`<button onclick="playStream(${i})">${label}</button>`
+
+})
+
+document.getElementById("quality").innerHTML=html
+
+}
+
+/* play stream */
+
+function playStream(i){
+
+currentIndex=i
+
+let url=currentStreams[i]
+let player=document.getElementById("player")
+
+if(!url) return
+
+if(url.includes(".m3u8")){
+
+if(Hls.isSupported()){
+
+let hls=new Hls()
+hls.loadSource(url)
+hls.attachMedia(player)
+hls.on(Hls.Events.MANIFEST_PARSED,function(){
+player.play()
+})
+
+}else{
+
+player.src=url
+player.play()
+
+}
+
+}else{
+
+player.src=url
+player.play()
+
+}
+
+}
+
+/* next episode */
+
+function nextEpisode(){
+
+if(currentIndex+1 < currentStreams.length){
+
+currentIndex++
+playStream(currentIndex)
+
+}
+
+}
+
+/* extraction buttons beside links */
+
+function addExtractionButtons(html){
+
+let container=document.createElement("div")
+container.innerHTML=html
+
+let links=container.querySelectorAll("a")
+
+links.forEach(link=>{
+
+let url=link.href
+
+if(url.includes("http")){
+
+let btn=document.createElement("button")
+btn.innerText="Extract & Play"
+btn.className="extractBtn"
+
+btn.onclick=function(){
+playDirect(url)
+}
+
+link.after(btn)
+
+}
+
+})
+
+return container.innerHTML
+
+}
+
+/* play direct link from button */
+
+function playDirect(url){
+
+let player=document.getElementById("player")
+
+if(url.includes(".m3u8")){
+
+if(Hls.isSupported()){
+
+let hls=new Hls()
+hls.loadSource(url)
+hls.attachMedia(player)
+hls.on(Hls.Events.MANIFEST_PARSED,function(){
+player.play()
+})
+
+}else{
+
+player.src=url
+player.play()
+
+}
+
+}else{
+
+player.src=url
+player.play()
+
+}
+
+}
+
+/* back */
+
+function back(){
+
+document.getElementById("postPage").style.display="none"
+document.getElementById("posts").style.display="grid"
+
+}
+
+</script>
+
+</body>
+
+</html>
+```
