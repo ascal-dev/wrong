@@ -1,0 +1,423 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Streaming App</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#0b0b0b;
+color:white;
+}
+
+header{
+background:black;
+padding:15px;
+text-align:center;
+font-size:22px;
+}
+
+.menu{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+padding:10px;
+justify-content:center;
+background:#111;
+}
+
+.menu button{
+padding:8px 14px;
+background:#e50914;
+border:none;
+color:white;
+border-radius:4px;
+cursor:pointer;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+gap:15px;
+padding:15px;
+}
+
+.card{
+background:#1a1a1a;
+border-radius:10px;
+overflow:hidden;
+cursor:pointer;
+transition:.3s;
+}
+
+.card:hover{
+transform:scale(1.05);
+}
+
+.card img{
+width:100%;
+height:250px;
+object-fit:cover;
+}
+
+.card h3{
+font-size:15px;
+padding:10px;
+}
+
+#postPage{
+display:none;
+padding:20px;
+max-width:900px;
+margin:auto;
+}
+
+.poster{
+width:100%;
+max-width:500px;
+display:block;
+margin:auto;
+border-radius:8px;
+}
+
+.date{
+color:#aaa;
+margin-top:8px;
+}
+
+.back{
+background:#e50914;
+border:none;
+color:white;
+padding:8px 15px;
+cursor:pointer;
+margin-bottom:15px;
+}
+
+.playerBox{
+margin-top:20px;
+background:black;
+padding:10px;
+border-radius:10px;
+}
+
+video{
+width:100%;
+max-height:500px;
+background:black;
+}
+
+.playbtn{
+margin-top:10px;
+padding:8px 15px;
+background:#e50914;
+border:none;
+color:white;
+cursor:pointer;
+}
+
+.content img{
+max-width:100%;
+margin-top:10px;
+border-radius:6px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+Streaming Library
+</header>
+
+<div class="menu">
+
+<button onclick="loadLatest()">Latest</button>
+
+<div id="categories"></div>
+
+</div>
+
+<div id="posts" class="grid"></div>
+
+<div id="postPage"></div>
+
+<script>
+
+const API="https://ddose007.info.in/wp-json/wp/v2"
+
+loadCategories()
+loadLatest()
+
+
+/* load categories */
+
+async function loadCategories(){
+
+let res=await fetch(API+"/categories")
+let data=await res.json()
+
+let html=""
+
+data.forEach(c=>{
+html+=`<button onclick="loadPosts(${c.id})">${c.name}</button>`
+})
+
+document.getElementById("categories").innerHTML=html
+
+}
+
+
+/* load latest posts */
+
+async function loadLatest(){
+
+let res=await fetch(API+"/posts?_embed&per_page=12")
+let posts=await res.json()
+
+renderPosts(posts)
+
+}
+
+
+/* load posts by category */
+
+async function loadPosts(id){
+
+let res=await fetch(API+"/posts?categories="+id+"&_embed")
+let posts=await res.json()
+
+renderPosts(posts)
+
+}
+
+
+/* render post cards */
+
+function renderPosts(posts){
+
+document.getElementById("postPage").style.display="none"
+document.getElementById("posts").style.display="grid"
+
+let html=""
+
+posts.forEach(p=>{
+
+let img=""
+
+if(p._embedded && p._embedded["wp:featuredmedia"]){
+
+img=p._embedded["wp:featuredmedia"][0].source_url
+
+}
+
+html+=`
+
+<div class="card" onclick="openPost(${p.id})">
+
+<img src="${img}">
+
+<h3>${p.title.rendered}</h3>
+
+</div>
+
+`
+
+})
+
+document.getElementById("posts").innerHTML=html
+
+}
+
+
+
+/* open post */
+
+async function openPost(id){
+
+let res=await fetch(API+"/posts/"+id+"?_embed")
+let post=await res.json()
+
+let img=""
+
+if(post._embedded && post._embedded["wp:featuredmedia"]){
+
+img=post._embedded["wp:featuredmedia"][0].source_url
+
+}
+
+document.getElementById("posts").style.display="none"
+document.getElementById("postPage").style.display="block"
+
+let content=post.content.rendered
+
+let streamLinks=extractStreams(content)
+
+let playerHTML=""
+
+if(streamLinks.length>0){
+
+playerHTML=`
+
+<div class="playerBox">
+
+<video id="player" controls></video>
+
+<div id="streamButtons"></div>
+
+</div>
+
+`
+
+}
+
+document.getElementById("postPage").innerHTML=`
+
+<button class="back" onclick="back()">Back</button>
+
+<img class="poster" src="${img}">
+
+<h2>${post.title.rendered}</h2>
+
+<div class="date">
+${new Date(post.date).toLocaleString()}
+</div>
+
+${playerHTML}
+
+<div class="content">
+${content}
+</div>
+
+`
+
+if(streamLinks.length>0){
+
+renderStreamButtons(streamLinks)
+
+}
+
+}
+
+
+
+/* extract links */
+
+function extractStreams(html){
+
+let urls=[]
+
+/* direct mp4/m3u8 */
+
+let regex=/https?:\/\/[^"' ]+\.(m3u8|mp4)/g
+let match
+
+while((match=regex.exec(html))!==null){
+urls.push(match[0])
+}
+
+/* vidnest / lulu embed pages */
+
+let embedRegex=/https?:\/\/[^"' ]+(vidnest|luluvdoo|lulu)[^"' ]+/g
+
+while((match=embedRegex.exec(html))!==null){
+urls.push(match[0])
+}
+
+return urls
+
+}
+
+
+
+/* render buttons */
+
+function renderStreamButtons(streams){
+
+let html=""
+
+streams.forEach((s,i)=>{
+
+html+=`<button class="playbtn" onclick="playStream('${s}')">Play Stream ${i+1}</button>`
+
+})
+
+document.getElementById("streamButtons").innerHTML=html
+
+}
+
+
+
+/* play stream */
+
+async function playStream(url){
+
+let player=document.getElementById("player")
+
+/* direct stream */
+
+if(url.includes(".mp4") || url.includes(".m3u8")){
+
+player.src=url
+player.play()
+
+return
+}
+
+
+/* vidnest / lulu extraction */
+
+if(url.includes("vidnest") || url.includes("luluvdoo") || url.includes("lulu")){
+
+try{
+
+let res=await fetch(url)
+let text=await res.text()
+
+let match=text.match(/file\s*:\s*"(https:[^"]+)"/)
+
+if(match){
+
+player.src=match[1]
+player.play()
+
+}else{
+
+alert("Stream not found")
+
+}
+
+}catch(e){
+
+alert("Stream extraction failed")
+
+}
+
+}
+
+}
+
+
+
+/* back button */
+
+function back(){
+
+document.getElementById("postPage").style.display="none"
+document.getElementById("posts").style.display="grid"
+
+}
+
+</script>
+
+</body>
+
+</html>
+```
