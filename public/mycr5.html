@@ -1,528 +1,205 @@
-```html
 <!DOCTYPE html>
 <html>
 <head>
-
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Streaming Library</title>
-
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
+<meta charset="UTF-8">
+<title>Series Viewer with Latest Posts</title>
 <style>
-
-body{
-margin:0;
-background:#0b0b0b;
-font-family:Arial;
-color:white;
-}
-
-header{
-background:black;
-padding:15px;
-text-align:center;
-font-size:22px;
-}
-
-.menu{
-display:flex;
-flex-wrap:wrap;
-gap:10px;
-padding:10px;
-background:#111;
-justify-content:center;
-}
-
-.menu button{
-padding:8px 14px;
-background:#e50914;
-border:none;
-color:white;
-border-radius:4px;
-cursor:pointer;
-}
-
-.search{
-padding:8px;
-border:none;
-border-radius:4px;
-width:200px;
-}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-gap:15px;
-padding:20px;
-}
-
-.card{
-background:#1a1a1a;
-border-radius:10px;
-overflow:hidden;
-cursor:pointer;
-transition:.2s;
-}
-
-.card:hover{
-transform:scale(1.05);
-}
-
-.card img{
-width:100%;
-height:250px;
-object-fit:cover;
-}
-
-.card h3{
-font-size:14px;
-padding:10px;
-}
-
-#postPage{
-display:none;
-padding:20px;
-max-width:1000px;
-margin:auto;
-}
-
-.poster{
-width:100%;
-max-width:400px;
-border-radius:8px;
-display:block;
-margin:auto;
-}
-
-.playerBox{
-margin-top:20px;
-background:black;
-padding:10px;
-border-radius:10px;
-}
-
-video{
-width:100%;
-max-height:520px;
-background:black;
-}
-
-.controls{
-margin-top:10px;
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
-
-.controls button{
-background:#e50914;
-border:none;
-padding:8px 12px;
-color:white;
-border-radius:4px;
-cursor:pointer;
-}
-
-.back{
-background:#e50914;
-border:none;
-padding:8px 12px;
-color:white;
-cursor:pointer;
-margin-bottom:15px;
-}
-
-.extractBtn{
-margin-left:8px;
-background:#e50914;
-border:none;
-padding:5px 10px;
-color:white;
-cursor:pointer;
-border-radius:4px;
-}
-
+body{background:#0e0e0e;color:white;font-family:Arial;margin:0;padding:20px;}
+h1{text-align:center;margin-bottom:20px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.card{background:#1c1c1c;border-radius:8px;overflow:hidden;cursor:pointer;transition:.2s;}
+.card:hover{transform:scale(1.03);}
+.card img{width:100%;height:120px;object-fit:cover;}
+.card-title{padding:6px;text-align:center;font-size:13px;}
+.meta{font-size:11px;opacity:.7;margin-top:2px;}
+.back{margin-bottom:12px;}
+button{background:#ff2c2c;border:none;padding:5px 10px;color:white;border-radius:4px;cursor:pointer;margin:2px;}
+button:hover{background:#ff4d4d;}
+@media (min-width: 768px){.grid{grid-template-columns:repeat(4,1fr);}}
+@media (max-width: 767px){.grid{grid-template-columns:repeat(2,1fr);}}
+video{width:100%;max-width:900px;margin-top:15px;background:black;border-radius:6px;}
 </style>
-
 </head>
-
 <body>
+<h1>Series Viewer with Latest Posts</h1>
 
-<header>Streaming Library</header>
-
-<div class="menu">
-
+<div id="pagination">
+<button onclick="prevPage()">Prev</button>
+<input id="pageInput" type="number" value="1">
+<button onclick="goPage()">Go</button>
+<button onclick="nextPage()">Next</button>
 <button onclick="loadLatest()">Latest</button>
-
-<input class="search" placeholder="Search..." onkeyup="searchPosts(this.value)">
-
-<div id="categories"></div>
-
+<span id="totalPages"></span>
 </div>
 
-<div id="posts" class="grid"></div>
-
-<div id="postPage"></div>
+<div id="mainGrid" class="grid"></div>
+<div id="postDetail"></div>
+<video id="player" controls></video>
+<div id="videoInfo"></div>
 
 <script>
+const proxy="https://allinone.godess.workers.dev/?url=";
+const SERIES_API="https://xmazaa.ac/wp-json/wp/v2/series";
+const POSTS_API="https://xmazaa.ac/wp-json/wp/v2/posts?_embed&per_page=100";
+let page=1,totalPages=1,latestMode=false;
+const mainGrid=document.getElementById("mainGrid");
+const postDetail=document.getElementById("postDetail");
+const player=document.getElementById("player");
+const videoInfo=document.getElementById("videoInfo");
+const cacheSeries={},cachePosts={},cacheLatest={};
 
-const API="https://ddose007.info.in/wp-json/wp/v2"
+function proxyFetch(url){return fetch(proxy+encodeURIComponent(url));}
 
-let cachePosts=[]
-let currentStreams=[]
-let currentIndex=0
-
-init()
-
-async function init(){
-
-await loadCategories()
-await loadLatest()
-
+// Load series list
+async function loadSeries(){
+    latestMode=false;
+    postDetail.innerHTML=""; player.src=""; videoInfo.innerHTML="";
+    mainGrid.innerHTML="Loading series...";
+    if(cacheSeries[page]){renderSeries(cacheSeries[page]);return;}
+    const res=await proxyFetch(`${SERIES_API}?per_page=100&page=${page}`);
+    totalPages=res.headers.get("X-WP-TotalPages")||1;
+    document.getElementById("totalPages").innerText="/ "+totalPages;
+    const data=await res.json();
+    cacheSeries[page]=data;
+    renderSeries(data);
 }
 
-/* load categories */
-
-async function loadCategories(){
-
-let res=await fetch(API+"/categories")
-let data=await res.json()
-
-let html=""
-
-data.forEach(c=>{
-html+=`<button onclick="loadPosts(${c.id})">${c.name}</button>`
-})
-
-document.getElementById("categories").innerHTML=html
-
+// Render series with 2 posts each
+async function renderSeries(seriesList){
+    mainGrid.innerHTML="";
+    for(let series of seriesList){
+        let posts=[];
+        if(cachePosts[series.id]) posts=cachePosts[series.id];
+        else{
+            const res=await proxyFetch(`${POSTS_API}&series=${series.id}`);
+            posts=await res.json();
+            cachePosts[series.id]=posts;
+        }
+        if(posts.length===0) continue;
+        const seriesPoster=posts[0]._embedded?.["wp:featuredmedia"]?.[0]?.source_url || series.image || "";
+        const div=document.createElement("div");
+        div.className="card";
+        div.innerHTML=`
+<img src="${seriesPoster}">
+<div class="card-title">${series.name || series.title?.rendered || "No Title"}</div>
+<div class="meta">${posts.length} Episodes</div>
+<hr style="border-color:#333;">
+${posts.slice(0,2).map(p=>`<div class="card" onclick='showPostDetail(${JSON.stringify(p).replace(/'/g,"\\'")})'><img src="${p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""}"><div class="card-title">${p.title.rendered}</div><div class="meta">${new Date(p.modified).toLocaleDateString()}</div></div>`).join('')}
+`;
+        mainGrid.appendChild(div);
+    }
 }
 
-/* latest posts */
-
+// Load latest posts
 async function loadLatest(){
-
-let res=await fetch(API+"/posts?_embed&per_page=40")
-let posts=await res.json()
-
-cachePosts=posts
-renderPosts(posts)
-
+    latestMode=true;
+    postDetail.innerHTML=""; player.src=""; videoInfo.innerHTML="";
+    mainGrid.innerHTML="Loading latest posts...";
+    if(cacheLatest[page]){renderLatest(cacheLatest[page]);return;}
+    const res=await proxyFetch(`${POSTS_API}&page=${page}`);
+    totalPages=res.headers.get("X-WP-TotalPages")||1;
+    document.getElementById("totalPages").innerText="/ "+totalPages;
+    const posts=await res.json();
+    cacheLatest[page]=posts;
+    renderLatest(posts);
 }
 
-/* category posts */
-
-async function loadPosts(id){
-
-let res=await fetch(API+"/posts?categories="+id+"&_embed&per_page=40")
-let posts=await res.json()
-
-cachePosts=posts
-renderPosts(posts)
-
+// Render latest posts
+function renderLatest(posts){
+    mainGrid.innerHTML="";
+    posts.forEach(p=>{
+        const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+        const div=document.createElement("div");
+        div.className="card";
+        div.innerHTML=`
+<img src="${thumb}">
+<div class="card-title">${p.title.rendered}</div>
+<div class="meta">${new Date(p.modified).toLocaleDateString()}</div>
+`;
+        div.onclick=()=>showPostDetail(p);
+        mainGrid.appendChild(div);
+    });
 }
 
-/* search */
-
-function searchPosts(q){
-
-q=q.toLowerCase()
-
-let filtered=cachePosts.filter(p=>p.title.rendered.toLowerCase().includes(q))
-
-renderPosts(filtered)
-
-}
-
-/* render posts */
-
-function renderPosts(posts){
-
-document.getElementById("postPage").style.display="none"
-document.getElementById("posts").style.display="grid"
-
-let html=""
-
-posts.forEach(p=>{
-
-let img=""
-
-if(p._embedded && p._embedded["wp:featuredmedia"])
-img=p._embedded["wp:featuredmedia"][0].source_url
-
-html+=`
-
-<div class="card" onclick="openPost(${p.id})">
-
-<img src="${img}">
-<h3>${p.title.rendered}</h3>
-
-</div>
-
-`
-
-})
-
-document.getElementById("posts").innerHTML=html
-
-}
-
-/* open post */
-
-async function openPost(id){
-
-let res=await fetch(API+"/posts/"+id+"?_embed")
-let post=await res.json()
-
-let img=""
-
-if(post._embedded && post._embedded["wp:featuredmedia"])
-img=post._embedded["wp:featuredmedia"][0].source_url
-
-let content=addExtractionButtons(post.content.rendered)
-
-currentStreams=extractStreams(post.content.rendered)
-let subtitles=extractSubtitles(post.content.rendered)
-
-document.getElementById("posts").style.display="none"
-document.getElementById("postPage").style.display="block"
-
-document.getElementById("postPage").innerHTML=`
-
-<button class="back" onclick="back()">Back</button>
-
-<img class="poster" src="${img}">
-
+// Show post detail with Extract & Play
+function showPostDetail(post){
+    mainGrid.innerHTML="";
+    postDetail.innerHTML=`<div class="back"><button onclick="${latestMode?'loadLatest()':'loadSeries()'}">⬅ Back</button></div>`;
+    player.src=""; videoInfo.innerHTML="";
+    const poster=post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+    const updated=new Date(post.modified).toLocaleString();
+    const content=post.content.rendered || "";
+    const div=document.createElement("div");
+    div.className="card";
+    div.style.padding="10px";
+    div.innerHTML=`
+<img src="${poster}" style="width:100%;border-radius:6px;margin-bottom:10px;">
 <h2>${post.title.rendered}</h2>
-
-<div class="playerBox">
-
-<video id="player" controls></video>
-
-<div class="controls">
-
-<button onclick="playStream(0)">Play</button>
-
-<button onclick="nextEpisode()">Next Episode</button>
-
-<div id="quality"></div>
-
-</div>
-
-</div>
-
+<div class="meta">Updated: ${updated}</div>
 <div>${content}</div>
-
-`
-
-renderQuality()
-renderSubtitles(subtitles)
-
+<button onclick='extractVideo("${post.link}")'>Extract & Play Video</button>
+`;
+    postDetail.appendChild(div);
 }
 
-/* extract streams */
+// Aggressive video extraction
+async function extractVideo(url){
+    videoInfo.innerHTML="Extracting video...";
+    try{
+        const res=await fetch(proxy+encodeURIComponent(url));
+        const html=await res.text();
+        const parser=new DOMParser();
+        const doc=parser.parseFromString(html,"text/html");
+        let video="";
 
-function extractStreams(html){
+        const lazySources=doc.querySelectorAll(".xplayer-lazy-source");
+        if(lazySources.length){
+            for(let src of lazySources){
+                const s=src.getAttribute("data-src");
+                if(s && s.includes(".mp4")){video=s;break;}
+            }
+        }
 
-let urls=[]
-let regex=/https?:\/\/[^"' ]+\.(m3u8|mp4)/g
-let match
+        if(!video){
+            const jsonScripts=doc.querySelectorAll('script[type="application/ld+json"]');
+            for(let js of jsonScripts){
+                try{
+                    const data=JSON.parse(js.textContent);
+                    if(data.contentUrl && data.contentUrl.includes(".mp4")){video=data.contentUrl;break;}
+                    else if(data.embedUrl && data.embedUrl.includes(".mp4")){video=data.embedUrl;break;}
+                }catch(e){}
+            }
+        }
 
-while((match=regex.exec(html))!==null){
-urls.push(match[0])
+        if(!video){
+            const regex=html.match(/https?:\/\/[^"']+\.mp4/g);
+            if(regex && regex.length>0){video=regex[0];}
+        }
+
+        if(video){
+            player.src=video;
+            player.load();
+            player.play();
+            videoInfo.innerHTML=`Streaming: <br>${video}`;
+        } else {
+            videoInfo.innerHTML="Video not found.";
+            alert("Video not found for this post.");
+        }
+
+    } catch(e){
+        console.error("Video fetch error",e);
+        videoInfo.innerHTML="Failed to extract video.";
+        alert("Failed to extract video.");
+    }
 }
 
-return urls
-
-}
-
-/* subtitle detection */
-
-function extractSubtitles(html){
-
-let subs=[]
-let regex=/https?:\/\/[^"' ]+\.(vtt|srt)/g
-let match
-
-while((match=regex.exec(html))!==null){
-subs.push(match[0])
-}
-
-return subs
-
-}
-
-/* render subtitle tracks */
-
-function renderSubtitles(subs){
-
-let player=document.getElementById("player")
-
-subs.forEach(s=>{
-
-let track=document.createElement("track")
-
-track.kind="subtitles"
-track.src=s
-track.default=true
-
-player.appendChild(track)
-
-})
-
-}
-
-/* quality buttons */
-
-function renderQuality(){
-
-let html=""
-
-currentStreams.forEach((s,i)=>{
-
-let label="Stream "+(i+1)
-
-if(s.includes("1080")) label="1080p"
-if(s.includes("720")) label="720p"
-if(s.includes("360")) label="360p"
-
-html+=`<button onclick="playStream(${i})">${label}</button>`
-
-})
-
-document.getElementById("quality").innerHTML=html
-
-}
-
-/* play stream */
-
-function playStream(i){
-
-currentIndex=i
-
-let url=currentStreams[i]
-let player=document.getElementById("player")
-
-if(!url) return
-
-if(url.includes(".m3u8")){
-
-if(Hls.isSupported()){
-
-let hls=new Hls()
-hls.loadSource(url)
-hls.attachMedia(player)
-hls.on(Hls.Events.MANIFEST_PARSED,function(){
-player.play()
-})
-
-}else{
-
-player.src=url
-player.play()
-
-}
-
-}else{
-
-player.src=url
-player.play()
-
-}
-
-}
-
-/* next episode */
-
-function nextEpisode(){
-
-if(currentIndex+1 < currentStreams.length){
-
-currentIndex++
-playStream(currentIndex)
-
-}
-
-}
-
-/* extraction buttons beside links */
-
-function addExtractionButtons(html){
-
-let container=document.createElement("div")
-container.innerHTML=html
-
-let links=container.querySelectorAll("a")
-
-links.forEach(link=>{
-
-let url=link.href
-
-if(url.includes("http")){
-
-let btn=document.createElement("button")
-btn.innerText="Extract & Play"
-btn.className="extractBtn"
-
-btn.onclick=function(){
-playDirect(url)
-}
-
-link.after(btn)
-
-}
-
-})
-
-return container.innerHTML
-
-}
-
-/* play direct link from button */
-
-function playDirect(url){
-
-let player=document.getElementById("player")
-
-if(url.includes(".m3u8")){
-
-if(Hls.isSupported()){
-
-let hls=new Hls()
-hls.loadSource(url)
-hls.attachMedia(player)
-hls.on(Hls.Events.MANIFEST_PARSED,function(){
-player.play()
-})
-
-}else{
-
-player.src=url
-player.play()
-
-}
-
-}else{
-
-player.src=url
-player.play()
-
-}
-
-}
-
-/* back */
-
-function back(){
-
-document.getElementById("postPage").style.display="none"
-document.getElementById("posts").style.display="grid"
-
-}
-
+// Pagination
+function nextPage(){if(page<totalPages){page++;document.getElementById("pageInput").value=page;latestMode?loadLatest():loadSeries();}}
+function prevPage(){if(page>1){page--;document.getElementById("pageInput").value=page;latestMode?loadLatest():loadSeries();}}
+function goPage(){page=parseInt(document.getElementById("pageInput").value);if(page<1)page=1;if(page>totalPages)page=totalPages;latestMode?loadLatest():loadSeries();}
+
+// Initial load
+loadSeries();
 </script>
-
 </body>
-
 </html>
-```
