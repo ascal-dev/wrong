@@ -127,8 +127,13 @@ return fetch(proxy+encodeURIComponent(url))
 }
 
 function extractNumber(title){
-let m=title.match(/\d+/)
-return m?parseInt(m[0]):0
+
+let numbers = title.match(/\d+/g)
+
+if(!numbers) return 0
+
+return parseInt(numbers[numbers.length-1])
+
 }
 
 async function loadSeries(){
@@ -354,20 +359,33 @@ playerContainer.innerHTML="Extraction failed"
 }
 
 function nextPage(){
+
+if(page<totalPages){
 page++
 document.getElementById("pageInput").value=page
 loadSeries()
 }
 
+}
+
 function prevPage(){
-if(page>1)page--
+
+if(page>1){
+page--
 document.getElementById("pageInput").value=page
 loadSeries()
 }
 
+}
+
 function goPage(){
+
 page=parseInt(document.getElementById("pageInput").value)
+
+if(page<1) page=1
+
 loadSeries()
+
 }
 
 loadSeries()
