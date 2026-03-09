@@ -1,456 +1,378 @@
-```html
 <!DOCTYPE html>
 <html>
 <head>
-
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stream Library</title>
-
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<meta charset="UTF-8">
+<title>Series Viewer</title>
 
 <style>
 
 body{
-margin:0;
-background:#0b0b0b;
+background:#0e0e0e;
+color:white;
 font-family:Arial;
-color:white;
+margin:0;
+padding:20px
 }
 
-header{
-background:black;
-padding:15px;
-font-size:22px;
-text-align:center;
-}
-
-.menu{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-padding:10px;
-background:#111;
-justify-content:center;
-}
-
-.menu button{
-background:#e50914;
-border:none;
-padding:8px 14px;
-color:white;
-border-radius:4px;
-cursor:pointer;
-}
-
-.search{
-padding:8px;
-border:none;
-border-radius:4px;
-width:200px;
-}
+h1{text-align:center}
 
 .grid{
 display:grid;
-grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
-gap:15px;
-padding:20px;
+grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+gap:12px
 }
 
 .card{
-background:#1a1a1a;
-border-radius:10px;
+background:#1c1c1c;
+border-radius:8px;
 overflow:hidden;
 cursor:pointer;
-transition:.2s;
+transition:.2s
 }
 
-.card:hover{
-transform:scale(1.05);
-}
+.card:hover{transform:scale(1.03)}
 
 .card img{
 width:100%;
-height:250px;
-object-fit:cover;
+height:auto;
+max-height:240px;
+object-fit:contain;
+background:black
 }
 
-.card h3{
-font-size:14px;
-padding:10px;
+.card-title{
+padding:6px;
+text-align:center;
+font-size:14px
 }
 
-#postPage{
-display:none;
-padding:20px;
-max-width:1000px;
-margin:auto;
+.meta{
+font-size:11px;
+opacity:.7;
+text-align:center;
+margin-bottom:6px
 }
 
-.poster{
-width:100%;
-max-width:400px;
-border-radius:8px;
-display:block;
-margin:auto;
+button{
+background:#ff2c2c;
+border:none;
+padding:6px 12px;
+color:white;
+border-radius:4px;
+cursor:pointer;
+margin:3px
 }
 
-.playerBox{
-margin-top:20px;
-background:black;
-padding:10px;
-border-radius:10px;
+button:hover{background:#ff4d4d}
+
+.nav{
+text-align:center;
+margin:15px 0
 }
 
 video{
 width:100%;
-max-height:520px;
+max-width:900px;
+margin:20px auto;
+display:block;
 background:black;
+border-radius:6px
 }
 
-.controls{
+.gallery img{
+width:100%;
 margin-top:10px;
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
-
-.controls button{
-background:#e50914;
-border:none;
-padding:8px 12px;
-color:white;
-border-radius:4px;
-cursor:pointer;
-}
-
-.subtitle{
-margin-top:5px;
-}
-
-.back{
-background:#e50914;
-border:none;
-padding:8px 12px;
-color:white;
-cursor:pointer;
-margin-bottom:15px;
+border-radius:6px
 }
 
 </style>
-
 </head>
 
 <body>
 
-<header>Streaming Library</header>
+<h1>Series Viewer</h1>
 
-<div class="menu">
-
-<button onclick="loadLatest()">Latest</button>
-
-<input class="search" placeholder="Search..." onkeyup="searchPosts(this.value)">
-
-<div id="categories"></div>
-
+<div class="nav">
+<button onclick="prevPage()">Prev</button>
+<input id="pageInput" type="number" value="1" style="width:60px">
+<button onclick="goPage()">Go</button>
+<button onclick="nextPage()">Next</button>
 </div>
 
-<div id="posts" class="grid"></div>
+<div id="mainGrid" class="grid"></div>
+<div id="detail"></div>
+<div id="playerContainer"></div>
 
-<div id="postPage"></div>
+<div class="nav">
+<button onclick="prevPage()">Prev</button>
+<button onclick="nextPage()">Next</button>
+</div>
 
 <script>
 
-const API="https://ddose007.info.in/wp-json/wp/v2"
+const proxy="https://allinone.godess.workers.dev/?url="
 
-let cachePosts=[]
-let currentStreams=[]
-let currentIndex=0
+const SERIES_API="https://xmazaa.ac/wp-json/wp/v2/series"
+const POSTS_API="https://xmazaa.ac/wp-json/wp/v2/posts"
 
-init()
+let page=1
+let totalPages=1
 
-async function init(){
+const grid=document.getElementById("mainGrid")
+const detail=document.getElementById("detail")
+const playerContainer=document.getElementById("playerContainer")
 
-await loadCategories()
-await loadLatest()
+function proxyFetch(url){
+return fetch(proxy+encodeURIComponent(url))
+}
+
+function extractNumber(title){
+let m=title.match(/\d+/)
+return m?parseInt(m[0]):0
+}
+
+async function loadSeries(){
+
+grid.innerHTML="Loading series..."
+detail.innerHTML=""
+playerContainer.innerHTML=""
+
+const res=await proxyFetch(`${SERIES_API}?per_page=100&page=${page}`)
+
+totalPages=res.headers.get("X-WP-TotalPages")||1
+
+const data=await res.json()
+
+renderSeries(data.slice(0,24))
 
 }
 
-/* categories */
+async function renderSeries(seriesList){
 
-async function loadCategories(){
+grid.innerHTML=""
 
-let res=await fetch(API+"/categories")
-let data=await res.json()
+for(let s of seriesList){
 
-let html=""
+const posts=await getSeriesPosts(s.id)
 
-data.forEach(c=>{
-html+=`<button onclick="loadPosts(${c.id})">${c.name}</button>`
-})
+if(posts.length===0) continue
 
-document.getElementById("categories").innerHTML=html
+const poster=posts[0]._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
 
-}
+const div=document.createElement("div")
 
-/* latest */
+div.className="card"
 
-async function loadLatest(){
+div.innerHTML=`
+<img src="${poster}">
+<div class="card-title">${s.name}</div>
+<div class="meta">${posts.length} Episodes</div>
+`
 
-let res=await fetch(API+"/posts?_embed&per_page=40")
-let posts=await res.json()
+div.onclick=()=>showSeriesEpisodes(s.id,s.name)
 
-cachePosts=posts
-renderPosts(posts)
-
-}
-
-/* category */
-
-async function loadPosts(id){
-
-let res=await fetch(API+"/posts?categories="+id+"&_embed&per_page=40")
-let posts=await res.json()
-
-cachePosts=posts
-renderPosts(posts)
+grid.appendChild(div)
 
 }
 
-/* search */
+}
 
-function searchPosts(q){
+async function getSeriesPosts(seriesId){
 
-q=q.toLowerCase()
+const res=await proxyFetch(`${POSTS_API}?series=${seriesId}&_embed&per_page=100`)
 
-let f=cachePosts.filter(p=>p.title.rendered.toLowerCase().includes(q))
+const posts=await res.json()
 
-renderPosts(f)
+posts.sort((a,b)=>extractNumber(a.title.rendered)-extractNumber(b.title.rendered))
+
+return posts
 
 }
 
-/* render cards */
+async function showSeriesEpisodes(seriesId,seriesName){
 
-function renderPosts(posts){
+grid.innerHTML="Loading episodes..."
+detail.innerHTML=""
+playerContainer.innerHTML=""
 
-document.getElementById("postPage").style.display="none"
-document.getElementById("posts").style.display="grid"
+const posts=await getSeriesPosts(seriesId)
 
-let html=""
+grid.innerHTML=""
+
+detail.innerHTML=`
+<button onclick="loadSeries()">⬅ Back</button>
+<h2>${seriesName}</h2>
+`
 
 posts.forEach(p=>{
 
-let img=""
+const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
 
-if(p._embedded && p._embedded["wp:featuredmedia"])
-img=p._embedded["wp:featuredmedia"][0].source_url
+const date=new Date(p.modified).toLocaleString()
 
-html+=`
-<div class="card" onclick="openPost(${p.id})">
-<img src="${img}">
-<h3>${p.title.rendered}</h3>
-</div>
+const div=document.createElement("div")
+
+div.className="card"
+
+div.innerHTML=`
+<img src="${thumb}">
+<div class="card-title">${p.title.rendered}</div>
+<div class="meta">${date}</div>
 `
+
+div.onclick=()=>showEpisodeDetail(p)
+
+grid.appendChild(div)
 
 })
 
-document.getElementById("posts").innerHTML=html
-
 }
 
-/* open post */
+async function showEpisodeDetail(post){
 
-async function openPost(id){
+grid.innerHTML=""
+playerContainer.innerHTML=""
 
-let res=await fetch(API+"/posts/"+id+"?_embed")
-let post=await res.json()
+const poster=post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
+const updated=new Date(post.modified).toLocaleString()
 
-let img=""
+detail.innerHTML=`
 
-if(post._embedded && post._embedded["wp:featuredmedia"])
-img=post._embedded["wp:featuredmedia"][0].source_url
+<button onclick="history.back()">⬅ Back</button>
 
-let content=post.content.rendered
+<div class="card" style="padding:12px">
 
-currentStreams=extractStreams(content)
-let subtitles=extractSubtitles(content)
-
-document.getElementById("posts").style.display="none"
-document.getElementById("postPage").style.display="block"
-
-document.getElementById("postPage").innerHTML=`
-
-<button class="back" onclick="back()">Back</button>
-
-<img class="poster" src="${img}">
+<img src="${poster}" style="width:100%;border-radius:6px">
 
 <h2>${post.title.rendered}</h2>
 
-<div class="playerBox">
+<div class="meta">Uploaded: ${updated}</div>
 
-<video id="player" controls></video>
+<div>${post.content.rendered}</div>
 
-<div class="controls">
+<button onclick='extractVideo("${post.link}")'>Extract Video</button>
 
-<button onclick="playStream(0)">Play</button>
-
-<button onclick="nextEpisode()">Next Episode</button>
-
-<div id="quality"></div>
+<div id="gallery" class="gallery"></div>
 
 </div>
-
-<div class="subtitle" id="subs"></div>
-
-</div>
-
-<div>${content}</div>
 
 `
 
-renderQuality()
-renderSubtitles(subtitles)
+loadMediaImages(post)
 
 }
 
-/* extract streams */
+async function loadMediaImages(post){
 
-function extractStreams(html){
+const gallery=document.getElementById("gallery")
 
-let urls=[]
+gallery.innerHTML="Loading images..."
 
-let r=/https?:\/\/[^"' ]+\.(m3u8|mp4)/g
-let m
+try{
 
-while((m=r.exec(html))!==null){
-urls.push(m[0])
+const mediaLink=post._links["wp:featuredmedia"][0].href
+
+const res=await proxyFetch(mediaLink)
+
+const media=await res.json()
+
+const html=media.description.rendered
+
+const parser=new DOMParser()
+
+const doc=parser.parseFromString(html,"text/html")
+
+const links=doc.querySelectorAll("a")
+
+gallery.innerHTML=""
+
+links.forEach(a=>{
+
+if(a.href.includes(".webp")){
+
+const img=document.createElement("img")
+
+img.src=a.href
+
+gallery.appendChild(img)
+
 }
-
-return urls
-
-}
-
-/* subtitles */
-
-function extractSubtitles(html){
-
-let subs=[]
-
-let r=/https?:\/\/[^"' ]+\.(vtt|srt)/g
-let m
-
-while((m=r.exec(html))!==null){
-subs.push(m[0])
-}
-
-return subs
-
-}
-
-/* quality buttons */
-
-function renderQuality(){
-
-let html=""
-
-currentStreams.forEach((s,i)=>{
-
-let label="Stream "+(i+1)
-
-if(s.includes("1080")) label="1080p"
-if(s.includes("720")) label="720p"
-if(s.includes("360")) label="360p"
-
-html+=`<button onclick="playStream(${i})">${label}</button>`
 
 })
 
-document.getElementById("quality").innerHTML=html
+}catch(e){
+
+gallery.innerHTML="No images found"
 
 }
 
-/* subtitles render */
-
-function renderSubtitles(subs){
-
-let player=document.getElementById("player")
-
-subs.forEach(s=>{
-
-let track=document.createElement("track")
-
-track.kind="subtitles"
-track.src=s
-track.default=true
-
-player.appendChild(track)
-
-})
-
 }
 
-/* play */
+async function extractVideo(url){
 
-function playStream(i){
+playerContainer.innerHTML="Extracting video..."
 
-currentIndex=i
+try{
 
-let url=currentStreams[i]
-let player=document.getElementById("player")
+const res=await fetch(proxy+encodeURIComponent(url))
 
-if(url.includes(".m3u8")){
+const html=await res.text()
 
-if(Hls.isSupported()){
+let video=""
 
-let hls=new Hls()
-hls.loadSource(url)
-hls.attachMedia(player)
-hls.on(Hls.Events.MANIFEST_PARSED,function(){
-player.play()
-})
+const mp4=html.match(/https?:\/\/[^"' ]+\.mp4/g)
+
+if(mp4) video=mp4[0]
+
+if(video){
+
+playerContainer.innerHTML=`
+
+<video controls autoplay>
+<source src="${video}" type="video/mp4">
+</video>
+
+<div style="text-align:center;margin-top:10px">
+Streaming:<br>${video}
+</div>
+`
+
+playerContainer.scrollIntoView({behavior:"smooth"})
 
 }else{
 
-player.src=url
-player.play()
+playerContainer.innerHTML="Video not found"
 
 }
 
-}else{
+}catch(e){
 
-player.src=url
-player.play()
-
-}
-
-}
-
-/* next episode */
-
-function nextEpisode(){
-
-if(currentIndex+1 < currentStreams.length){
-
-currentIndex++
-playStream(currentIndex)
+playerContainer.innerHTML="Extraction failed"
 
 }
 
 }
 
-/* back */
-
-function back(){
-
-document.getElementById("postPage").style.display="none"
-document.getElementById("posts").style.display="grid"
-
+function nextPage(){
+page++
+document.getElementById("pageInput").value=page
+loadSeries()
 }
+
+function prevPage(){
+if(page>1)page--
+document.getElementById("pageInput").value=page
+loadSeries()
+}
+
+function goPage(){
+page=parseInt(document.getElementById("pageInput").value)
+loadSeries()
+}
+
+loadSeries()
 
 </script>
 
 </body>
-
 </html>
-```
