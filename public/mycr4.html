@@ -5,6 +5,7 @@
 <title>Series Viewer</title>
 
 <style>
+
 body{
 background:#0e0e0e;
 color:white;
@@ -15,10 +16,28 @@ padding:20px
 
 h1{text-align:center}
 
+.searchBar{
+text-align:center;
+margin-bottom:15px
+}
+
+.searchBar input{
+padding:8px;
+width:220px;
+border-radius:4px;
+border:none
+}
+
 .grid{
 display:grid;
-grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-gap:12px
+grid-template-columns:repeat(2,1fr);
+gap:10px
+}
+
+@media(min-width:700px){
+.grid{
+grid-template-columns:repeat(4,1fr)
+}
 }
 
 .card{
@@ -34,9 +53,10 @@ transition:.2s
 .card img{
 width:100%;
 height:auto;
-max-height:240px;
+max-height:260px;
 object-fit:contain;
-background:black
+background:black;
+padding:4px
 }
 
 .card-title{
@@ -46,10 +66,14 @@ font-size:14px
 }
 
 .meta{
-font-size:11px;
-opacity:.7;
+font-size:12px;
+opacity:.8;
 text-align:center;
-margin-bottom:6px
+margin-bottom:6px;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:4px
 }
 
 button{
@@ -78,17 +102,17 @@ background:black;
 border-radius:6px
 }
 
-.gallery img{
-width:100%;
-margin-top:10px;
-border-radius:6px
-}
 </style>
 </head>
 
 <body>
 
 <h1>Series Viewer</h1>
+
+<div class="searchBar">
+<input id="searchInput" placeholder="Search episodes or series">
+<button onclick="searchPosts()">Search</button>
+</div>
 
 <div class="nav">
 
@@ -102,9 +126,11 @@ Page
 <button onclick="nextPage()">Next</button>
 
 </div>
-
-<div id="mainGrid" class="grid"></div>
 <div id="detail"></div>
+<div id="mainGrid" class="grid"></div>
+
+
+
 <div id="playerContainer"></div>
 
 <div class="nav">
@@ -130,6 +156,8 @@ const POSTS_API="https://xmazaa.ac/wp-json/wp/v2/posts"
 let page=1
 let mode="series"
 
+let navStack=[]
+
 const grid=document.getElementById("mainGrid")
 const detail=document.getElementById("detail")
 const playerContainer=document.getElementById("playerContainer")
@@ -138,24 +166,89 @@ function proxyFetch(url){
 return fetch(proxy+encodeURIComponent(url))
 }
 
-function updatePageInputs(){
+/* HISTORY SYSTEM */
 
+function pushState(state){
+navStack.push(state)
+history.pushState(state,"")
+}
+
+window.onpopstate=function(){
+
+if(navStack.length>1){
+
+navStack.pop()
+
+const state=navStack[navStack.length-1]
+
+restoreState(state)
+
+}
+
+}
+
+function restoreState(state){
+
+grid.innerHTML=""
+detail.innerHTML=""
+playerContainer.innerHTML=""
+
+if(state.type==="series"){
+page=state.page
+loadSeries(false)
+}
+
+if(state.type==="episodes"){
+showSeriesEpisodes(state.seriesId,state.seriesName,false)
+}
+
+if(state.type==="episode"){
+showEpisodeDetail(state.post,false)
+}
+
+if(state.type==="latest"){
+page=state.page
+showLatest(false)
+}
+
+if(state.type==="search"){
+restoreSearch(state.query)
+}
+
+}
+
+/* UTILITIES */
+
+function updatePageInputs(){
 document.getElementById("pageInput").value=page
 document.getElementById("pageInputBottom").value=page
-
 }
 
 function extractNumber(title){
-
 let numbers=title.match(/\d+/g)
 if(!numbers) return 0
 return parseInt(numbers[numbers.length-1])
-
 }
 
-async function loadSeries(){
+function formatDate(date){
+return new Date(date).toLocaleDateString()
+}
+
+function dateIcon(){
+return `
+<svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+<path d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm14 8H3v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10z"/>
+</svg>
+`
+}
+
+/* SERIES LIST */
+
+async function loadSeries(push=true){
 
 mode="series"
+
+if(push) pushState({type:"series",page})
 
 grid.innerHTML="Loading..."
 detail.innerHTML=""
@@ -163,7 +256,7 @@ playerContainer.innerHTML=""
 
 updatePageInputs()
 
-const res=await proxyFetch(`${SERIES_API}?per_page=24&page=${page}`)
+const res=await proxyFetch(`${SERIES_API}?per_page=12&page=${page}`)
 const series=await res.json()
 
 renderSeries(series)
@@ -201,6 +294,8 @@ grid.appendChild(div)
 
 }
 
+/* GET POSTS */
+
 async function getSeriesPosts(seriesId){
 
 const res=await proxyFetch(`${POSTS_API}?series=${seriesId}&_embed&per_page=100`)
@@ -212,7 +307,11 @@ return posts
 
 }
 
-async function showSeriesEpisodes(seriesId,seriesName){
+/* EPISODE LIST */
+
+async function showSeriesEpisodes(seriesId,seriesName,push=true){
+
+if(push) pushState({type:"episodes",seriesId,seriesName})
 
 grid.innerHTML="Loading episodes..."
 detail.innerHTML=""
@@ -223,14 +322,14 @@ const posts=await getSeriesPosts(seriesId)
 grid.innerHTML=""
 
 detail.innerHTML=`
-<button onclick="loadSeries()">⬅ Back</button>
+<button onclick="window.history.back()">⬅ Back</button>
 <h2>${seriesName}</h2>
 `
 
 posts.forEach(p=>{
 
 const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
-const date=new Date(p.modified).toLocaleString()
+const date=formatDate(p.modified)
 
 const div=document.createElement("div")
 div.className="card"
@@ -238,7 +337,7 @@ div.className="card"
 div.innerHTML=`
 <img src="${thumb}">
 <div class="card-title">${p.title.rendered}</div>
-<div class="meta">${date}</div>
+<div class="meta">${dateIcon()} ${date}</div>
 `
 
 div.onclick=()=>showEpisodeDetail(p)
@@ -249,17 +348,21 @@ grid.appendChild(div)
 
 }
 
-async function showEpisodeDetail(post){
+/* EPISODE DETAIL */
+
+async function showEpisodeDetail(post,push=true){
+
+if(push) pushState({type:"episode",post})
 
 grid.innerHTML=""
 playerContainer.innerHTML=""
 
 const poster=post._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
-const updated=new Date(post.modified).toLocaleString()
+const updated=formatDate(post.modified)
 
 detail.innerHTML=`
 
-<button onclick="history.back()">⬅ Back</button>
+<button onclick="window.history.back()">⬅ Back</button>
 
 <div class="card" style="padding:12px">
 
@@ -267,59 +370,18 @@ detail.innerHTML=`
 
 <h2>${post.title.rendered}</h2>
 
-<div class="meta">Uploaded: ${updated}</div>
+<div class="meta">${dateIcon()} ${updated}</div>
 
 <div>${post.content.rendered}</div>
 
 <button onclick='extractVideo("${post.link}")'>Extract Video</button>
 
-<div id="gallery" class="gallery"></div>
-
 </div>
 `
 
-loadMediaImages(post)
-
 }
 
-async function loadMediaImages(post){
-
-const gallery=document.getElementById("gallery")
-gallery.innerHTML="Loading images..."
-
-try{
-
-const mediaLink=post._links["wp:featuredmedia"][0].href
-const res=await proxyFetch(mediaLink)
-const media=await res.json()
-
-const html=media.description.rendered
-const parser=new DOMParser()
-const doc=parser.parseFromString(html,"text/html")
-
-const links=doc.querySelectorAll("a")
-
-gallery.innerHTML=""
-
-links.forEach(a=>{
-
-if(a.href.includes(".webp")){
-
-const img=document.createElement("img")
-img.src=a.href
-gallery.appendChild(img)
-
-}
-
-})
-
-}catch(e){
-
-gallery.innerHTML="No images found"
-
-}
-
-}
+/* VIDEO EXTRACT */
 
 async function extractVideo(url){
 
@@ -364,9 +426,13 @@ playerContainer.innerHTML="Extraction failed"
 
 }
 
-async function showLatest(){
+/* LATEST */
+
+async function showLatest(push=true){
 
 mode="latest"
+
+if(push) pushState({type:"latest",page})
 
 grid.innerHTML="Loading latest..."
 detail.innerHTML=""
@@ -374,7 +440,7 @@ playerContainer.innerHTML=""
 
 updatePageInputs()
 
-const res=await proxyFetch(`${POSTS_API}?per_page=24&_embed&page=${page}`)
+const res=await proxyFetch(`${POSTS_API}?per_page=12&_embed&page=${page}`)
 const posts=await res.json()
 
 grid.innerHTML=""
@@ -382,6 +448,7 @@ grid.innerHTML=""
 posts.forEach(p=>{
 
 const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
+const date=formatDate(p.modified)
 
 const div=document.createElement("div")
 div.className="card"
@@ -389,7 +456,7 @@ div.className="card"
 div.innerHTML=`
 <img src="${thumb}">
 <div class="card-title">${p.title.rendered}</div>
-<div class="meta">${new Date(p.modified).toLocaleString()}</div>
+<div class="meta">${dateIcon()} ${date}</div>
 `
 
 div.onclick=()=>showEpisodeDetail(p)
@@ -400,13 +467,59 @@ grid.appendChild(div)
 
 }
 
+/* SEARCH */
+
+async function searchPosts(){
+
+const query=document.getElementById("searchInput").value.trim()
+
+if(!query) return
+
+pushState({type:"search",query})
+
+restoreSearch(query)
+
+}
+
+async function restoreSearch(query){
+
+grid.innerHTML="Searching..."
+detail.innerHTML=""
+playerContainer.innerHTML=""
+
+const res=await proxyFetch(`${POSTS_API}?search=${encodeURIComponent(query)}&_embed&per_page=12`)
+const posts=await res.json()
+
+grid.innerHTML=""
+
+posts.forEach(p=>{
+
+const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
+const date=formatDate(p.modified)
+
+const div=document.createElement("div")
+div.className="card"
+
+div.innerHTML=`
+<img src="${thumb}">
+<div class="card-title">${p.title.rendered}</div>
+<div class="meta">${dateIcon()} ${date}</div>
+`
+
+div.onclick=()=>showEpisodeDetail(p)
+
+grid.appendChild(div)
+
+})
+
+}
+
+/* PAGINATION */
+
 function nextPage(){
-
 page++
-
 if(mode==="series") loadSeries()
 if(mode==="latest") showLatest()
-
 }
 
 function prevPage(){
@@ -443,6 +556,8 @@ if(mode==="series") loadSeries()
 if(mode==="latest") showLatest()
 
 }
+
+/* START */
 
 loadSeries()
 
