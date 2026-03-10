@@ -5,7 +5,6 @@
 <title>Series Viewer</title>
 
 <style>
-
 body{
 background:#0e0e0e;
 color:white;
@@ -84,7 +83,6 @@ width:100%;
 margin-top:10px;
 border-radius:6px
 }
-
 </style>
 </head>
 
@@ -93,10 +91,16 @@ border-radius:6px
 <h1>Series Viewer</h1>
 
 <div class="nav">
+
+<button onclick="showLatest()">Latest</button>
 <button onclick="prevPage()">Prev</button>
+
+Page
 <input id="pageInput" type="number" value="1" style="width:60px">
+
 <button onclick="goPage()">Go</button>
 <button onclick="nextPage()">Next</button>
+
 </div>
 
 <div id="mainGrid" class="grid"></div>
@@ -104,8 +108,16 @@ border-radius:6px
 <div id="playerContainer"></div>
 
 <div class="nav">
+
+<button onclick="showLatest()">Latest</button>
 <button onclick="prevPage()">Prev</button>
+
+Page
+<input id="pageInputBottom" type="number" value="1" style="width:60px">
+
+<button onclick="goPageBottom()">Go</button>
 <button onclick="nextPage()">Next</button>
+
 </div>
 
 <script>
@@ -116,7 +128,7 @@ const SERIES_API="https://xmazaa.ac/wp-json/wp/v2/series"
 const POSTS_API="https://xmazaa.ac/wp-json/wp/v2/posts"
 
 let page=1
-let totalPages=1
+let mode="series"
 
 const grid=document.getElementById("mainGrid")
 const detail=document.getElementById("detail")
@@ -126,29 +138,35 @@ function proxyFetch(url){
 return fetch(proxy+encodeURIComponent(url))
 }
 
+function updatePageInputs(){
+
+document.getElementById("pageInput").value=page
+document.getElementById("pageInputBottom").value=page
+
+}
+
 function extractNumber(title){
 
-let numbers = title.match(/\d+/g)
-
+let numbers=title.match(/\d+/g)
 if(!numbers) return 0
-
 return parseInt(numbers[numbers.length-1])
 
 }
 
 async function loadSeries(){
 
-grid.innerHTML="Loading series..."
+mode="series"
+
+grid.innerHTML="Loading..."
 detail.innerHTML=""
 playerContainer.innerHTML=""
 
-const res=await proxyFetch(`${SERIES_API}?per_page=100&page=${page}`)
+updatePageInputs()
 
-totalPages=res.headers.get("X-WP-TotalPages")||1
+const res=await proxyFetch(`${SERIES_API}?per_page=24&page=${page}`)
+const series=await res.json()
 
-const data=await res.json()
-
-renderSeries(data.slice(0,24))
+renderSeries(series)
 
 }
 
@@ -156,16 +174,17 @@ async function renderSeries(seriesList){
 
 grid.innerHTML=""
 
-for(let s of seriesList){
+const promises=seriesList.map(s=>getSeriesPosts(s.id))
+const results=await Promise.all(promises)
 
-const posts=await getSeriesPosts(s.id)
+seriesList.forEach((s,index)=>{
 
-if(posts.length===0) continue
+const posts=results[index]
+if(!posts||posts.length===0) return
 
-const poster=posts[0]._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
+const poster=posts[0]._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
 
 const div=document.createElement("div")
-
 div.className="card"
 
 div.innerHTML=`
@@ -178,14 +197,13 @@ div.onclick=()=>showSeriesEpisodes(s.id,s.name)
 
 grid.appendChild(div)
 
-}
+})
 
 }
 
 async function getSeriesPosts(seriesId){
 
 const res=await proxyFetch(`${POSTS_API}?series=${seriesId}&_embed&per_page=100`)
-
 const posts=await res.json()
 
 posts.sort((a,b)=>extractNumber(a.title.rendered)-extractNumber(b.title.rendered))
@@ -211,12 +229,10 @@ detail.innerHTML=`
 
 posts.forEach(p=>{
 
-const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
-
+const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
 const date=new Date(p.modified).toLocaleString()
 
 const div=document.createElement("div")
-
 div.className="card"
 
 div.innerHTML=`
@@ -238,7 +254,7 @@ async function showEpisodeDetail(post){
 grid.innerHTML=""
 playerContainer.innerHTML=""
 
-const poster=post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
+const poster=post._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
 const updated=new Date(post.modified).toLocaleString()
 
 detail.innerHTML=`
@@ -260,7 +276,6 @@ detail.innerHTML=`
 <div id="gallery" class="gallery"></div>
 
 </div>
-
 `
 
 loadMediaImages(post)
@@ -270,21 +285,16 @@ loadMediaImages(post)
 async function loadMediaImages(post){
 
 const gallery=document.getElementById("gallery")
-
 gallery.innerHTML="Loading images..."
 
 try{
 
 const mediaLink=post._links["wp:featuredmedia"][0].href
-
 const res=await proxyFetch(mediaLink)
-
 const media=await res.json()
 
 const html=media.description.rendered
-
 const parser=new DOMParser()
-
 const doc=parser.parseFromString(html,"text/html")
 
 const links=doc.querySelectorAll("a")
@@ -296,9 +306,7 @@ links.forEach(a=>{
 if(a.href.includes(".webp")){
 
 const img=document.createElement("img")
-
 img.src=a.href
-
 gallery.appendChild(img)
 
 }
@@ -320,11 +328,9 @@ playerContainer.innerHTML="Extracting video..."
 try{
 
 const res=await fetch(proxy+encodeURIComponent(url))
-
 const html=await res.text()
 
 let video=""
-
 const mp4=html.match(/https?:\/\/[^"' ]+\.mp4/g)
 
 if(mp4) video=mp4[0]
@@ -358,22 +364,60 @@ playerContainer.innerHTML="Extraction failed"
 
 }
 
+async function showLatest(){
+
+mode="latest"
+
+grid.innerHTML="Loading latest..."
+detail.innerHTML=""
+playerContainer.innerHTML=""
+
+updatePageInputs()
+
+const res=await proxyFetch(`${POSTS_API}?per_page=24&_embed&page=${page}`)
+const posts=await res.json()
+
+grid.innerHTML=""
+
+posts.forEach(p=>{
+
+const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url||""
+
+const div=document.createElement("div")
+div.className="card"
+
+div.innerHTML=`
+<img src="${thumb}">
+<div class="card-title">${p.title.rendered}</div>
+<div class="meta">${new Date(p.modified).toLocaleString()}</div>
+`
+
+div.onclick=()=>showEpisodeDetail(p)
+
+grid.appendChild(div)
+
+})
+
+}
+
 function nextPage(){
 
-if(page<totalPages){
 page++
-document.getElementById("pageInput").value=page
-loadSeries()
-}
+
+if(mode==="series") loadSeries()
+if(mode==="latest") showLatest()
 
 }
 
 function prevPage(){
 
 if(page>1){
+
 page--
-document.getElementById("pageInput").value=page
-loadSeries()
+
+if(mode==="series") loadSeries()
+if(mode==="latest") showLatest()
+
 }
 
 }
@@ -384,7 +428,19 @@ page=parseInt(document.getElementById("pageInput").value)
 
 if(page<1) page=1
 
-loadSeries()
+if(mode==="series") loadSeries()
+if(mode==="latest") showLatest()
+
+}
+
+function goPageBottom(){
+
+page=parseInt(document.getElementById("pageInputBottom").value)
+
+if(page<1) page=1
+
+if(mode==="series") loadSeries()
+if(mode==="latest") showLatest()
 
 }
 
