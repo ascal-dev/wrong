@@ -1,1002 +1,513 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Streaming Library</title>
+<meta charset="UTF-8">
+<title>Desimms Browser</title>
 
 <style>
 
 body{
 margin:0;
 font-family:Arial;
-background:#0b0b0b;
+background:#111;
 color:white;
 }
 
 header{
-background:black;
-padding:15px;
-text-align:center;
-font-size:22px;
-position:relative;
+background:#000;
+padding:10px;
+position:sticky;
+top:0;
+z-index:10;
 }
 
-.search-container{
-position:absolute;
-top:50%;
-right:15px;
-transform:translateY(-50%);
-display:flex;
-gap:5px;
-}
-
-.search-container input{
+button{
 padding:8px 12px;
-border:none;
-border-radius:4px;
-background:#333;
-color:white;
-width:200px;
-}
-
-.search-container button{
-padding:8px 12px;
-background:#e50914;
-border:none;
-color:white;
-border-radius:4px;
+margin:3px;
 cursor:pointer;
 }
 
-.menu{
-display:flex;
-flex-wrap:wrap;
-gap:10px;
-padding:10px;
-justify-content:center;
-background:#111;
-align-items:center;
-}
-
-.sort-filter{
-display:flex;
-gap:10px;
-align-items:center;
-flex-wrap:wrap;
-}
-
-.sort-filter select{
+input{
 padding:8px;
-background:#333;
-color:white;
-border:none;
-border-radius:4px;
 }
 
-.view-toggle{
-display:flex;
-gap:5px;
+#categories{
+padding:10px;
 }
 
-.view-toggle button{
-padding:8px 12px;
-background:#555;
-border:none;
-color:white;
-border-radius:4px;
-cursor:pointer;
-}
-
-.view-toggle button.active{
-background:#e50914;
-}
-
-.menu button{
-padding:8px 14px;
-background:#e50914;
-border:none;
-color:white;
-border-radius:4px;
-cursor:pointer;
-}
-
-.menu button.active{
-background:#ff6b6b;
-}
-
-.category-btn{
-background:#555 !important;
-}
-
-.category-btn.active{
-background:#e50914 !important;
-}
-
-.grid{
+#posts{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-gap:15px;
-padding:15px;
-}
-
-.list{
-display:flex;
-flex-direction:column;
+grid-template-columns:1fr 1fr;
 gap:10px;
-padding:15px;
-}
-
-.list .card{
-display:flex;
-background:#1a1a1a;
-border-radius:10px;
-overflow:hidden;
-cursor:pointer;
 padding:10px;
 }
 
-.list .card img{
-width:120px;
-height:90px;
-object-fit:cover;
-margin-right:15px;
-}
-
-.list .card h3{
-font-size:16px;
-margin:0;
-flex:1;
-}
-
-.compact{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-gap:10px;
-padding:15px;
-}
-
-.compact .card{
-background:#1a1a1a;
-border-radius:8px;
-overflow:hidden;
-cursor:pointer;
-}
-
-.compact .card img{
-width:100%;
-height:120px;
-object-fit:cover;
-}
-
-.compact .card h3{
-font-size:12px;
-padding:5px;
-}
-
-.card{
-background:#1a1a1a;
-border-radius:10px;
-overflow:hidden;
-cursor:pointer;
-}
-
-.card img{
-width:100%;
-height:250px;
-object-fit:cover;
-}
-
-.card h3{
-font-size:15px;
-padding:10px;
-}
-
-#postPage{
-display:none;
-padding:20px;
-max-width:900px;
-margin:auto;
-}
-
-.poster{
-width:100%;
-max-width:500px;
-display:block;
-margin:auto;
-}
-
-.playerBox{
-margin-top:20px;
-background:black;
-padding:10px;
-border-radius:10px;
-}
-
-video{
-width:100%;
-max-height:500px;
-background:black;
-}
-
-.playbtn{
-margin-top:10px;
-padding:8px 15px;
-background:#e50914;
-border:none;
-color:white;
-cursor:pointer;
-}
-
-.extractbtn{
-background:#2196F3;
-margin-left:10px;
-}
-
-.linkBox{
-background:#1a1a1a;
-padding:10px;
-margin-top:10px;
+.post{
+background:#222;
+padding:8px;
 border-radius:6px;
-}
-
-.pagination{
-display:flex;
-justify-content:center;
-align-items:center;
-gap:10px;
-padding:10px;
-background:#111;
-margin:10px 0;
-}
-
-.pagination button{
-padding:8px 14px;
-background:#e50914;
-border:none;
-color:white;
-border-radius:4px;
 cursor:pointer;
 }
 
-.pagination input{
-width:60px;
-padding:5px;
-text-align:center;
+.post img{
+width:100%;
+height:auto;
 }
 
-@media (max-width: 768px) {
-.search-container {
-position: static;
-transform: none;
-margin-top: 10px;
-width: 100%;
-justify-content: center;
+.post h3{
+font-size:15px;
+margin:5px 0;
 }
-.search-container input {
-width: 70%;
+
+#postView{
+display:none;
+padding:15px;
 }
-.menu {
-flex-direction: column;
-gap: 15px;
+
+#postView img{
+width:100%;
 }
-.sort-filter {
-justify-content: center;
-}
-.grid {
-grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-gap: 10px;
-}
-.list .card {
-flex-direction: column;
-text-align: center;
-}
-.list .card img {
-width: 100%;
-height: 150px;
-margin-right: 0;
-margin-bottom: 10px;
-}
-.video-controls-mobile {
-display: flex;
-justify-content: space-around;
-padding: 10px;
-background: #111;
-position: fixed;
-bottom: 0;
-left: 0;
-right: 0;
-z-index: 1000;
-}
+
+#videoResult{
+margin-top:10px;
+background:#000;
+padding:10px;
+word-break:break-all;
 }
 
 </style>
-
 </head>
 
 <body>
 
-<header>Streaming Library
-<div class="search-container">
-<input type="text" id="searchInput" placeholder="Search videos..." onkeypress="if(event.key==='Enter') performSearch()">
-<button onclick="performSearch()">Search</button>
-</div>
+<header>
+
+<button id="latestBtn">Latest</button>
+<button id="catBtn">Categories</button>
+
+<input id="searchBox" placeholder="Search posts">
+<button id="searchBtn">Search</button>
+
+<br>
+
+<button id="prevBtn">Previous</button>
+<input id="pageInput" type="number" value="1" style="width:60px">
+<button id="goBtn">Go</button>
+<button id="nextBtn">Next</button>
+
 </header>
-
-<div class="menu">
-
-<button onclick="resetFilters()">Latest</button>
 
 <div id="categories"></div>
 
-<div class="sort-filter">
-<select id="sortSelect" onchange="changeSort()">
-<option value="date">Sort by Date</option>
-<option value="title">Sort by Title</option>
-<option value="popularity">Sort by Popularity</option>
-</select>
+<div id="posts"></div>
 
-<div class="view-toggle">
-<button onclick="setView('grid')" class="active" id="gridBtn">Grid</button>
-<button onclick="setView('list')" id="listBtn">List</button>
-<button onclick="setView('compact')" id="compactBtn">Compact</button>
+<div id="postView">
+
+<button onclick="closePost()">Back</button>
+
+<h2 id="postTitle"></h2>
+
+<img id="postImage">
+
+<br><br>
+
+<button id="extractBtn">Extract Stream</button>
+<button id="smartExtractBtn">Smart Extract</button>
+
+<div id="videoResult"></div>
+
 </div>
-</div>
-
-</div>
-
-<div id="paginationTop"></div>
-
-<div id="loading" style="display:none;text-align:center;padding:20px;color:#e50914;">Loading...</div>
-
-<div id="posts" class="grid"></div>
-
-<div id="paginationBottom"></div>
-
-<div id="postPage"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
 
-const API="https://ddose007.info.in/wp-json/wp/v2"
+const API="https://www.desimms.com.co/wp-json/wp/v2"
 const PROXY="https://allinone.godess.workers.dev/?url="
 
-let currentSources=[]
-let hlsInstance=null
-
 let currentPage=1
-let totalPages=1
 let currentCategory=null
-let currentSort='date'
-let currentView='grid'
-let currentSearch=''
-let selectedCategories=[]
+let currentSearch=""
 
-console.log("APP STARTED")
+async function loadPosts(){
 
-loadCategories()
-loadFilteredPosts()
+document.getElementById("postView").style.display="none"
 
-/* ---------------- PROXY FETCH ---------------- */
+let url=`${API}/posts?_embed&page=${currentPage}`
 
-async function proxyFetch(url){
+if(currentCategory)
+url+=`&categories=${currentCategory}`
 
-console.log("Proxy fetch:",url)
+if(currentSearch)
+url+=`&search=${currentSearch}`
 
-let res=await fetch(PROXY+encodeURIComponent(url))
-
-let text=await res.text()
-
-return text
-
-}
-
-/* ---------------- REDIRECT FOLLOWER ---------------- */
-
-async function followRedirect(url){
-
-console.log("Redirect start:",url)
-
-let final=url
-
-for(let i=0;i<6;i++){
-
-let r=await fetch(PROXY+encodeURIComponent(final),{
-redirect:"follow"
-})
-
-console.log("Redirect step",i,"->",r.url)
-
-if(r.url===final) break
-
-final=r.url
-
-}
-
-console.log("Final stream:",final)
-
-return final
-
-}
-
-/* ---------------- CATEGORIES ---------------- */
-
-async function loadCategories(){
-
-let res=await fetch(API+"/categories")
+let res=await fetch(url)
 let data=await res.json()
 
-let html=""
-
-data.forEach(c=>{
-html+=`<button onclick="toggleCategory(${c.id})" class="category-btn" id="cat-${c.id}">${c.name}</button>`
-})
-
-document.getElementById("categories").innerHTML=html
-
-}
-
-/* ---------------- POSTS ---------------- */
-
-async function loadLatest(page=1){
-
-currentCategory=null
-currentPage=page
-
-document.getElementById("loading").style.display="block"
-document.getElementById("posts").style.display="none"
-
-let url = API+"/posts?_embed&per_page=12&page="+page
-
-if(currentSearch) url += "&search="+encodeURIComponent(currentSearch)
-if(selectedCategories.length > 0) url += "&categories="+selectedCategories.join(',')
-if(currentSort === 'title') url += "&orderby=title&order=asc"
-else if(currentSort === 'popularity') url += "&orderby=comment_count&order=desc"
-else url += "&orderby=date&order=desc"
-
-let res=await fetch(url)
-totalPages=parseInt(res.headers.get('X-WP-TotalPages')) || 1
-let posts=await res.json()
-
-document.getElementById("loading").style.display="none"
-
-renderPosts(posts)
-
-}
-
-async function loadPosts(id){
-
-selectedCategories = [id]
-currentCategory = id
-currentPage = 1
-
-loadFilteredPosts()
-
-}
-
-async function loadFilteredPosts(page = currentPage){
-
-currentPage = page
-
-document.getElementById("loading").style.display="block"
-document.getElementById("posts").style.display="none"
-
-let url = API+"/posts?_embed&per_page=12&page="+page
-
-if(currentSearch) url += "&search="+encodeURIComponent(currentSearch)
-if(selectedCategories.length > 0) url += "&categories="+selectedCategories.join(',')
-if(currentSort === 'title') url += "&orderby=title&order=asc"
-else if(currentSort === 'popularity') url += "&orderby=comment_count&order=desc"
-else url += "&orderby=date&order=desc"
-
-let res=await fetch(url)
-totalPages=parseInt(res.headers.get('X-WP-TotalPages')) || 1
-let posts=await res.json()
-
-document.getElementById("loading").style.display="none"
-
-renderPosts(posts)
+renderPosts(data)
 
 }
 
 function renderPosts(posts){
 
-document.getElementById("postPage").style.display="none"
-document.getElementById("posts").style.display="grid"
-document.getElementById("posts").className = currentView
-
-let html=""
+let container=document.getElementById("posts")
+container.innerHTML=""
 
 posts.forEach(p=>{
 
 let img=""
 
-if(p._embedded && p._embedded["wp:featuredmedia"]){
+if(p._embedded && p._embedded["wp:featuredmedia"])
 img=p._embedded["wp:featuredmedia"][0].source_url
-}
 
-html+=`
+let div=document.createElement("div")
+div.className="post"
 
-<div class="card" onclick="openPost(${p.id})">
-
-<img src="${img}" loading="lazy">
+div.innerHTML=`
+<img src="${img}">
 <h3>${p.title.rendered}</h3>
-
-</div>
-
 `
 
+div.onclick=()=>openPost(p,img)
+
+container.appendChild(div)
+
 })
-
-document.getElementById("posts").innerHTML=html
-
-renderPagination()
 
 }
 
-/* ---------------- PAGINATION ---------------- */
+function openPost(post,img){
 
-function renderPagination(){
+document.getElementById("posts").innerHTML=""
+document.getElementById("categories").innerHTML=""
 
-let html=`
+document.getElementById("postView").style.display="block"
 
-<div class="pagination">
+document.getElementById("postTitle").innerHTML=post.title.rendered
+document.getElementById("postImage").src=img
 
-<button onclick="prevPage()" ${currentPage<=1?'disabled':''}>Previous</button>
+document.getElementById("extractBtn").onclick=()=>extractVideo(post.link)
+document.getElementById("smartExtractBtn").onclick=()=>smartExtract(post.link)
 
-<span>Page <input type="number" id="pageInput" value="${currentPage}" min="1" max="${totalPages}" onkeypress="if(event.key==='Enter') goToPage()"> of ${totalPages}</span>
+}
 
-<button onclick="goToPage()">Go</button>
+function closePost(){
 
-<button onclick="nextPage()" ${currentPage>=totalPages?'disabled':''}>Next</button>
+document.getElementById("postView").style.display="none"
+loadPosts()
 
-</div>
+}
 
+/* BASIC MP4 EXTRACTOR */
+
+async function extractVideo(url){
+
+let resultBox=document.getElementById("videoResult")
+
+resultBox.innerHTML="Extracting..."
+
+try{
+
+let res=await fetch(PROXY+encodeURIComponent(url))
+let html=await res.text()
+
+let mp4=html.match(/https:\/\/cdn\.desimms\.com\.co\/[^"' ]+\.mp4/i)
+
+if(mp4){
+
+resultBox.innerHTML=`
+<b>Desimms CDN Stream</b><br><br>
+<video controls width="100%">
+<source src="${mp4[0]}">
+</video>
 `
-
-document.getElementById("paginationTop").innerHTML=html
-document.getElementById("paginationBottom").innerHTML=html
-
+return
 }
 
-function nextPage(){
+resultBox.innerHTML="No CDN stream found"
 
-if(currentPage < totalPages){
+}catch(e){
 
-currentPage++
-
-loadFilteredPosts(currentPage)
+resultBox.innerHTML="Extraction failed"
 
 }
 
 }
 
-function prevPage(){
+/* SMART SCANNER */
 
-if(currentPage > 1){
+async function smartExtract(url){
 
-currentPage--
+let resultBox=document.getElementById("videoResult")
 
-loadFilteredPosts(currentPage)
+resultBox.innerHTML="Scanning for streams..."
+
+let res=await fetch(PROXY+encodeURIComponent(url))
+let html=await res.text()
+
+let links=[]
+
+/* DESIMMS CDN */
+
+let cdn=html.match(/https:\/\/cdn\.desimms\.com\.co\/[^"' ]+\.mp4/g)
+
+if(cdn){
+cdn.forEach(l=>links.push({type:"desimms",url:l}))
+}
+
+/* VIDARA */
+
+let vidara=html.match(/https?:\/\/vidara\.to\/v\/[A-Za-z0-9]+/g)
+
+if(vidara){
+vidara.forEach(l=>links.push({type:"vidara",url:l}))
+}
+
+/* VIDNEST */
+
+let vidnest=html.match(/https?:\/\/vidnest[^"' ]+/g)
+
+if(vidnest){
+vidnest.forEach(l=>links.push({type:"vidnest",url:l}))
+}
+
+/* LULU */
+
+let lulu=html.match(/https?:\/\/lulu[^"' ]+/g)
+
+if(lulu){
+lulu.forEach(l=>links.push({type:"lulu",url:l}))
+}
+
+/* BOODSTREAM */
+
+let bood=html.match(/https?:\/\/share\.boodstream[^"' ]+/g)
+
+if(bood){
+bood.forEach(l=>links.push({type:"boodstream",url:l}))
+}
+
+/* MIRRORS */
+
+let mirror=html.match(/https?:\/\/(?:strcloud\.club|tapeadsenjoyer\.com|shavetape\.cash)\/v\/[^"' ]+/g)
+
+if(mirror){
+mirror.forEach(l=>links.push({type:"mirror",url:l}))
+}
+
+if(links.length===0){
+
+resultBox.innerHTML="No streams detected"
+return
 
 }
 
-}
-
-function goToPage(){
-
-let page=parseInt(document.getElementById("pageInput").value)
-
-if(page >=1 && page <= totalPages){
-
-currentPage=page
-
-loadFilteredPosts(currentPage)
-
-}
-
-}
-
-/* ---------------- SEARCH & FILTERS ---------------- */
-
-function performSearch(){
-
-currentSearch = document.getElementById("searchInput").value.trim()
-currentPage = 1
-loadFilteredPosts()
-
-}
-
-function changeSort(){
-
-currentSort = document.getElementById("sortSelect").value
-currentPage = 1
-loadFilteredPosts()
-
-}
-
-function setView(view){
-
-currentView = view
-document.getElementById("posts").className = view
-
-// Update active button
-document.querySelectorAll('.view-toggle button').forEach(btn => btn.classList.remove('active'))
-document.getElementById(view + 'Btn').classList.add('active')
-
-}
-
-function toggleCategory(id){
-
-let index = selectedCategories.indexOf(id)
-let btn = document.getElementById('cat-' + id)
-
-if(index > -1){
-selectedCategories.splice(index, 1)
-btn.classList.remove('active')
-}else{
-selectedCategories.push(id)
-btn.classList.add('active')
-}
-
-currentPage = 1
-loadFilteredPosts()
-
-}
-
-function resetFilters(){
-
-selectedCategories = []
-currentSearch = ''
-currentSort = 'date'
-currentPage = 1
-
-document.getElementById("searchInput").value = ''
-document.getElementById("sortSelect").value = 'date'
-document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'))
-
-loadFilteredPosts()
-
-}
-
-/* ---------------- MOBILE FEATURES ---------------- */
-
-let touchStartX = 0
-let touchStartY = 0
-let isPulling = false
-
-document.addEventListener('touchstart', function(e){
-touchStartX = e.touches[0].clientX
-touchStartY = e.touches[0].clientY
-isPulling = window.scrollY === 0
-})
-
-document.addEventListener('touchmove', function(e){
-if(!isPulling) return
-
-let touchCurrentY = e.touches[0].clientY
-let pullDistance = touchCurrentY - touchStartY
-
-if(pullDistance > 50){
-e.preventDefault()
-// Add pull-to-refresh visual feedback here
-}
-})
-
-document.addEventListener('touchend', function(e){
-if(!isPulling) return
-
-let touchEndX = e.changedTouches[0].clientX
-let touchEndY = e.changedTouches[0].clientY
-let deltaX = touchEndX - touchStartX
-let deltaY = touchEndY - touchStartY
-
-// Pull to refresh
-if(deltaY > 100 && window.scrollY === 0){
-loadFilteredPosts()
-}
-
-// Swipe navigation
-if(Math.abs(deltaX) > 50 && Math.abs(deltaY) < 30){
-if(deltaX > 0 && currentPage > 1){
-prevPage()
-}else if(deltaX < 0 && currentPage < totalPages){
-nextPage()
-}
-}
-
-isPulling = false
-})
-
-// Mobile video controls
-function toggleFullscreen(){
-let player = document.getElementById('player')
-if(player.requestFullscreen){
-player.requestFullscreen()
-}else if(player.webkitRequestFullscreen){
-player.webkitRequestFullscreen()
-}
-}
-
-// Show mobile controls on mobile devices
-if(window.innerWidth <= 768){
-document.getElementById('mobileControls').style.display = 'flex'
-}
-
-/* ---------------- OPEN POST ---------------- */
-
-async function openPost(id){
-
-let res=await fetch(API+"/posts/"+id+"?_embed")
-let post=await res.json()
-
-let img=""
-
-if(post._embedded && post._embedded["wp:featuredmedia"]){
-img=post._embedded["wp:featuredmedia"][0].source_url
-}
-
-document.getElementById("posts").style.display="none"
-document.getElementById("postPage").style.display="block"
-
-document.getElementById("paginationTop").style.display="none"
-document.getElementById("paginationBottom").style.display="none"
-
-let content=post.content.rendered
-
-let links=extractLinks(content)
-
-let linkHTML=""
+let buttons="<h3>Available Streams</h3>"
 
 links.forEach(l=>{
 
-if(isDownloadHost(l)) return
-
-linkHTML+=`
-
-<div class="linkBox">
-
-${l}
-
-<button class="extractbtn" onclick="extractStream('${l}')">
-Extract
+buttons+=`
+<button onclick="runExtractor('${l.type}','${l.url}')">
+${l.type.toUpperCase()}
 </button>
-
-</div>
-
 `
 
 })
 
-document.getElementById("postPage").innerHTML=`
+resultBox.innerHTML=buttons
 
-<button onclick="back()">Back</button>
+}
 
-<img class="poster" src="${img}">
+/* HOST EXTRACTORS */
 
-<h2>${post.title.rendered}</h2>
+async function runExtractor(type,url){
 
-<div class="playerBox">
+let resultBox=document.getElementById("videoResult")
 
-<video id="player" controls></video>
+resultBox.innerHTML="Extracting stream..."
 
-<div id="qualityBox"></div>
+try{
 
-</div>
+/* DESIMMS */
 
-<div class="video-controls-mobile" id="mobileControls" style="display:none;">
-<button onclick="player.play()">▶️</button>
-<button onclick="player.pause()">⏸️</button>
-<button onclick="player.currentTime -= 10">⏪</button>
-<button onclick="player.currentTime += 10">⏩</button>
-<button onclick="toggleFullscreen()">⛶</button>
-</div>
+if(type==="desimms"){
 
-<h3>Links</h3>
+resultBox.innerHTML=`
+<video controls width="100%">
+<source src="${url}">
+</video>
+`
+return
+}
 
-${linkHTML}
+/* VIDARA */
 
+if(type==="vidara"){
+
+let id=url.split("/v/")[1]
+
+let api=`https://vidara.so/api/stream?filecode=${id}`
+
+let res=await fetch(api)
+let data=await res.json()
+
+let stream=data.streaming_url
+
+resultBox.innerHTML=`
+
+<h3>${data.title}</h3>
+<img src="${data.thumbnail}" width="200"><br><br>
+
+<video controls width="100%">
+<source src="${stream}">
+</video>
+
+`
+return
+}
+
+/* MIRROR → STREAMTAPE */
+
+if(type==="mirror"){
+
+let id=url.split("/v/")[1].split("/")[0]
+
+let embed=`https://streamtape.com/e/${id}`
+
+resultBox.innerHTML=`
+
+<iframe
+src="${embed}"
+width="100%"
+height="400"
+frameborder="0"
+allowfullscreen>
+</iframe>
+
+`
+return
+}
+
+/* BOODSTREAM */
+
+if(type==="boodstream"){
+
+let page=await fetch(PROXY+encodeURIComponent(url))
+let html=await page.text()
+
+let mp4=html.match(/<video[^>]+src="([^"]+\.mp4)/)
+
+if(mp4){
+
+resultBox.innerHTML=`
+<video controls width="100%">
+<source src="${mp4[1]}">
+</video>
 `
 
 }
 
-/* ---------------- LINK SCAN ---------------- */
-
-function extractLinks(html){
-
-let urls=new Set()
-
-let regex=/(https?:\/\/[^"'<> ]+)/g
-let match
-
-while((match=regex.exec(html))!==null){
-
-let url=match[1]
-
-if(!isDownloadHost(url)){
-urls.add(url)
-}
-
-}
-
-console.log("Links found:",[...urls])
-
-return [...urls]
-
-}
-
-/* ---------------- DOWNLOAD HOST FILTER ---------------- */
-
-function isDownloadHost(url){
-
-let blocked=[
-"upfileas",
-"uploadmall",
-"dropgalaxy",
-"freedl"
-]
-
-return blocked.some(h=>url.includes(h))
-
-}
-
-/* ---------------- STREAM EXTRACTION ---------------- */
-
-async function extractStream(link){
-
-console.log("Extracting:",link)
-
-let html=await proxyFetch(link)
-
-/* JWPLAYER HOSTS */
-
-if(link.includes("vidnest") || link.includes("lulu") || link.includes("luluvdoo")){
-extractJW(html)
 return
 }
 
-/* STRCLOUD FAMILY */
+/* VIDNEST + LULU */
 
-if(link.includes("strcloud") || link.includes("advertape") || link.includes("tapeadsenjoyer")){
-extractStrcloud(html)
+if(type==="vidnest" || type==="lulu"){
+
+let res=await fetch(PROXY+encodeURIComponent(url))
+let html=await res.text()
+
+let file=html.match(/file\s*:\s*"([^"]+)"/)
+
+if(file){
+
+let stream=file[1]
+
+if(stream.includes(".m3u8")){
+stream=PROXY+encodeURIComponent(stream)
+}
+
+resultBox.innerHTML=`
+<video controls width="100%">
+<source src="${stream}">
+</video>
+`
+
+}
+
 return
 }
 
-console.log("Host not supported")
+}catch(e){
+
+resultBox.innerHTML="Extraction failed"
 
 }
 
-/* ---------------- JWPLAYER PARSER ---------------- */
+}
 
-function extractJW(html){
+/* CATEGORY SYSTEM */
 
-console.log("JW parser")
+async function loadCategories(){
 
-let fileRegex=/file\s*:\s*"([^"]+)"/g
-let labelRegex=/label\s*:\s*"([^"]+)"/g
+let res=await fetch(`${API}/categories`)
+let cats=await res.json()
 
-let files=[...html.matchAll(fileRegex)]
-let labels=[...html.matchAll(labelRegex)]
+let div=document.getElementById("categories")
+div.innerHTML=""
 
-currentSources=[]
+cats.forEach(c=>{
 
-for(let i=0;i<files.length;i++){
+let btn=document.createElement("button")
+btn.innerText=c.name
 
-currentSources.push({
-file:files[i][1],
-label:labels[i] ? labels[i][1] : "auto"
+btn.onclick=()=>{
+currentCategory=c.id
+currentPage=1
+loadPosts()
+}
+
+div.appendChild(btn)
+
 })
 
 }
 
-console.log("Sources:",currentSources)
-
-if(currentSources.length>0){
-
-renderQualityButtons()
-playStream(currentSources[0].file)
-
+document.getElementById("latestBtn").onclick=()=>{
+currentCategory=null
+currentSearch=""
+currentPage=1
+loadPosts()
 }
 
+document.getElementById("catBtn").onclick=loadCategories
+
+document.getElementById("searchBtn").onclick=()=>{
+currentSearch=document.getElementById("searchBox").value
+currentPage=1
+loadPosts()
 }
 
-/* ---------------- STRCLOUD PARSER ---------------- */
-
-async function extractStrcloud(html){
-
-console.log("Strcloud extractor")
-
-let match=html.match(/id="(?:ideoooolink|captchalink|norobotlink)"[^>]*>(.*?)</)
-
-if(!match){
-console.log("No redirect found")
-return
+document.getElementById("nextBtn").onclick=()=>{
+currentPage++
+document.getElementById("pageInput").value=currentPage
+loadPosts()
 }
 
-let url=match[1]
-
-url=url.replace(/&amp;/g,"&")
-
-if(url.startsWith("//")) url="https:"+url
-if(url.startsWith("/")) url="https:"+url
-
-console.log("Extracted redirect:",url)
-
-let final=await followRedirect(url)
-
-playStream(final)
-
+document.getElementById("prevBtn").onclick=()=>{
+if(currentPage>1){
+currentPage--
+document.getElementById("pageInput").value=currentPage
+loadPosts()
+}
 }
 
-/* ---------------- PLAYER ---------------- */
-
-function playStream(url){
-
-console.log("Playing:",url)
-
-let player=document.getElementById("player")
-
-if(hlsInstance){
-hlsInstance.destroy()
-hlsInstance=null
+document.getElementById("goBtn").onclick=()=>{
+currentPage=parseInt(document.getElementById("pageInput").value)
+loadPosts()
 }
 
-if(url.includes(".m3u8")){
-
-if(Hls.isSupported()){
-
-hlsInstance=new Hls()
-
-hlsInstance.loadSource(url)
-
-hlsInstance.attachMedia(player)
-
-}else{
-
-player.src=url
-
-}
-
-}else{
-
-player.src=url
-
-}
-
-player.play()
-
-}
-
-/* ---------------- QUALITY BUTTONS ---------------- */
-
-function renderQualityButtons(){
-
-let html=""
-
-currentSources.forEach(s=>{
-html+=`<button class="playbtn" onclick="playStream('${s.file}')">${s.label}</button>`
-})
-
-document.getElementById("qualityBox").innerHTML=html
-
-}
-
-/* ---------------- BACK ---------------- */
-
-function back(){
-
-document.getElementById("postPage").style.display="none"
-document.getElementById("posts").style.display="grid"
-
-document.getElementById("paginationTop").style.display="block"
-document.getElementById("paginationBottom").style.display="block"
-
-}
+loadPosts()
 
 </script>
 
 </body>
-
 </html>
