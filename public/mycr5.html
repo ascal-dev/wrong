@@ -2,85 +2,85 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Series Viewer</title>
+<title>Desimms Browser</title>
 
 <style>
 
 body{
-background:#0e0e0e;
-color:white;
-font-family:Arial;
 margin:0;
-padding:20px
+font-family:Arial;
+background:#111;
+color:white;
 }
 
-h1{text-align:center}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-gap:12px
-}
-
-.card{
-background:#1c1c1c;
-border-radius:8px;
-overflow:hidden;
-cursor:pointer;
-transition:.2s
-}
-
-.card:hover{transform:scale(1.03)}
-
-.card img{
-width:100%;
-height:200px;
-object-fit:cover
-}
-
-.card-title{
-padding:6px;
-text-align:center;
-font-size:14px
-}
-
-.meta{
-font-size:11px;
-opacity:.7;
-text-align:center;
-margin-bottom:6px
+header{
+background:#000;
+padding:10px;
+position:sticky;
+top:0;
+z-index:10;
 }
 
 button{
-background:#ff2c2c;
-border:none;
-padding:6px 12px;
-color:white;
-border-radius:4px;
+padding:8px 12px;
+margin:3px;
 cursor:pointer;
-margin:3px
 }
 
-button:hover{background:#ff4d4d}
-
-.nav{
-text-align:center;
-margin:15px 0
+input{
+padding:8px;
 }
 
-video{
+#categories{
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+padding: 10px;
+}
+
+#posts{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+padding:10px;
+}
+
+.post{
+background:#222;
+padding:8px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.post img{
 width:100%;
-max-width:900px;
-margin:20px auto;
-display:block;
-background:black;
-border-radius:6px
+height:auto;
 }
 
-.gallery img{
+.post h3{
+font-size:15px;
+margin:5px 0;
+}
+
+#postView{
+display:none;
+padding:15px;
+}
+
+#postView img{
 width:100%;
+}
+
+#videoResult{
 margin-top:10px;
-border-radius:6px
+background:#000;
+padding:10px;
+word-break:break-all;
+}
+
+#bottomNav{
+text-align:center;
+padding:15px;
 }
 
 </style>
@@ -88,286 +88,531 @@ border-radius:6px
 
 <body>
 
-<h1>Series Viewer</h1>
+<header>
 
-<div class="nav">
-<button onclick="prevPage()">Prev</button>
+<button id="latestBtn">Latest</button>
+<button id="catBtn">Categories</button>
+
+<input id="searchBox" placeholder="Search posts">
+<button id="searchBtn">Search</button>
+
+<br>
+
+<button id="prevBtn">Previous</button>
 <input id="pageInput" type="number" value="1" style="width:60px">
-<button onclick="goPage()">Go</button>
-<button onclick="nextPage()">Next</button>
+<button id="goBtn">Go</button>
+<button id="nextBtn">Next</button>
+
+</header>
+
+<div id="categories"></div>
+
+<div id="posts"></div>
+
+<div id="postView">
+
+<button onclick="closePost()">Back</button>
+
+<h2 id="postTitle"></h2>
+
+<img id="postImage">
+
+<br><br>
+
+<button id="extractBtn">Extract Stream</button>
+<button id="smartExtractBtn">Smart Extract</button>
+
+<div id="videoResult"></div>
+
 </div>
 
-<div id="mainGrid" class="grid"></div>
-<div id="detail"></div>
-<div id="playerContainer"></div>
-
-<div class="nav">
-<button onclick="prevPage()">Prev</button>
+<div id="bottomNav">
+<button onclick="prevPage()">Previous</button>
+<input id="pageInputBottom" type="number" value="1" style="width:60px">
+<button onclick="goBottom()">Go</button>
 <button onclick="nextPage()">Next</button>
 </div>
 
 <script>
 
-const proxy="https://allinone.godess.workers.dev/?url="
+const API="https://www.viralkand.com.co/wp-json/wp/v2"
+const PROXY="https://allinone.godess.workers.dev/?url="
 
-const SERIES_API="https://xmazaa.ac/wp-json/wp/v2/series"
-const POSTS_API="https://xmazaa.ac/wp-json/wp/v2/posts"
-const MEDIA_API="https://xmazaa.ac/wp-json/wp/v2/media"
+let currentPage=1
+let currentCategory=null
+let currentSearch=""
+let categoryPage=1
 
-let page=1
-let totalPages=1
+/* POSTS */
 
-const grid=document.getElementById("mainGrid")
-const detail=document.getElementById("detail")
-const playerContainer=document.getElementById("playerContainer")
+async function loadPosts(){
 
-function proxyFetch(url){
-return fetch(proxy+encodeURIComponent(url))
-}
+document.getElementById("postView").style.display="none"
+document.getElementById("categories").innerHTML=""
 
-function extractNumber(title){
-let m=title.match(/\d+/)
-return m?parseInt(m[0]):0
-}
+let url=`${API}/posts?_embed&per_page=16&page=${currentPage}`
 
-async function loadSeries(){
+if(currentCategory)
+url+=`&categories=${currentCategory}`
 
-grid.innerHTML="Loading series..."
-detail.innerHTML=""
-playerContainer.innerHTML=""
+if(currentSearch)
+url+=`&search=${currentSearch}`
 
-const res=await proxyFetch(`${SERIES_API}?per_page=100&page=${page}`)
+let res=await fetch(url)
+let data=await res.json()
 
-totalPages=res.headers.get("X-WP-TotalPages")||1
-
-const data=await res.json()
-
-renderSeries(data.slice(0,24))
+renderPosts(data)
 
 }
 
-async function renderSeries(seriesList){
+function renderPosts(posts){
 
-grid.innerHTML=""
+let container=document.getElementById("posts")
+container.innerHTML=""
 
-for(let s of seriesList){
+posts.forEach(p=>{
 
-const posts=await getSeriesPosts(s.id)
+let img=""
 
-if(posts.length===0) continue
+if(p._embedded && p._embedded["wp:featuredmedia"])
+img=p._embedded["wp:featuredmedia"][0].source_url
 
-const poster=posts[0]._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
-
-const div=document.createElement("div")
-
-div.className="card"
+let div=document.createElement("div")
+div.className="post"
 
 div.innerHTML=`
-<img src="${poster}" loading="lazy">
-<div class="card-title">${s.name}</div>
-<div class="meta">${posts.length} Episodes</div>
+<img src="${img}">
+<h3>${p.title.rendered}</h3>
 `
 
-div.onclick=()=>showSeriesEpisodes(s.id,s.name)
+div.onclick=()=>openPost(p,img)
 
-grid.appendChild(div)
-
-}
-
-}
-
-async function getSeriesPosts(seriesId){
-
-const res=await proxyFetch(`${POSTS_API}?series=${seriesId}&_embed&per_page=100`)
-
-const posts=await res.json()
-
-posts.sort((a,b)=>extractNumber(a.title.rendered)-extractNumber(b.title.rendered))
-
-return posts
-
-}
-
-async function showSeriesEpisodes(seriesId,seriesName){
-
-grid.innerHTML="Loading episodes..."
-detail.innerHTML=""
-playerContainer.innerHTML=""
-
-const posts=await getSeriesPosts(seriesId)
-
-grid.innerHTML=""
-
-detail.innerHTML=`
-<button onclick="loadSeries()">⬅ Back</button>
-<h2>${seriesName}</h2>
-`
-
-posts.slice(0,24).forEach(p=>{
-
-const thumb=p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
-
-const date=new Date(p.modified).toLocaleString()
-
-const div=document.createElement("div")
-
-div.className="card"
-
-div.innerHTML=`
-<img src="${thumb}" loading="lazy">
-<div class="card-title">${p.title.rendered}</div>
-<div class="meta">${date}</div>
-`
-
-div.onclick=()=>showEpisodeDetail(p)
-
-grid.appendChild(div)
+container.appendChild(div)
 
 })
 
 }
 
-async function showEpisodeDetail(post){
+/* POST VIEW */
 
-grid.innerHTML=""
-playerContainer.innerHTML=""
+function openPost(post,img){
 
-const poster=post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || ""
-const updated=new Date(post.modified).toLocaleString()
+document.getElementById("posts").innerHTML=""
+document.getElementById("categories").innerHTML=""
 
-detail.innerHTML=`
+document.getElementById("postView").style.display="block"
 
-<button onclick="history.back()">⬅ Back</button>
+document.getElementById("postTitle").innerHTML=post.title.rendered
+document.getElementById("postImage").src=img
 
-<div class="card" style="padding:12px">
-
-<img src="${poster}" style="width:100%;border-radius:6px">
-
-<h2>${post.title.rendered}</h2>
-
-<div class="meta">Uploaded: ${updated}</div>
-
-<div>${post.content.rendered}</div>
-
-<button onclick='extractVideo("${post.link}")'>Extract Video</button>
-
-<div id="gallery" class="gallery"></div>
-
-</div>
-
-`
-
-loadMediaImages(post)
+document.getElementById("extractBtn").onclick=()=>extractVideo(post.link)
+document.getElementById("smartExtractBtn").onclick=()=>smartExtract(post.link)
 
 }
 
-async function loadMediaImages(post){
+function closePost(){
 
-const gallery=document.getElementById("gallery")
-
-gallery.innerHTML="Loading images..."
-
-try{
-
-const mediaLink=post._links["wp:featuredmedia"][0].href
-
-const res=await proxyFetch(mediaLink)
-
-const media=await res.json()
-
-const html=media.description.rendered
-
-const parser=new DOMParser()
-
-const doc=parser.parseFromString(html,"text/html")
-
-const imgs=doc.querySelectorAll("img")
-
-gallery.innerHTML=""
-
-imgs.forEach(img=>{
-
-const im=document.createElement("img")
-
-im.src=img.src.replace("-300x","").replace("-768x","")
-
-im.loading="lazy"
-
-gallery.appendChild(im)
-
-})
-
-}catch(e){
-
-gallery.innerHTML="No images found"
+document.getElementById("postView").style.display="none"
+loadPosts()
 
 }
 
-}
+/* BASIC MP4 EXTRACTOR */
 
 async function extractVideo(url){
 
-playerContainer.innerHTML="Extracting video..."
+let resultBox=document.getElementById("videoResult")
+
+resultBox.innerHTML="Extracting..."
 
 try{
 
-const res=await fetch(proxy+encodeURIComponent(url))
+let res=await fetch(PROXY+encodeURIComponent(url))
+let html=await res.text()
 
-const html=await res.text()
+let mp4=html.match(/https:\/\/cdn\.desimms\.com\.co\/[^"' ]+\.mp4/i)
 
-let video=""
+if(mp4){
 
-const mp4=html.match(/https?:\/\/[^"' ]+\.mp4/g)
-
-if(mp4) video=mp4[0]
-
-if(video){
-
-playerContainer.innerHTML=`
-
-<video controls autoplay>
-<source src="${video}" type="video/mp4">
+resultBox.innerHTML=`
+<b>Desimms CDN Stream</b><br><br>
+<video controls width="100%">
+<source src="${mp4[0]}">
 </video>
+`
+return
+}
 
-<div style="text-align:center;margin-top:10px">
-Streaming:<br>${video}
-</div>
+resultBox.innerHTML="No CDN stream found"
+
+}catch(e){
+
+resultBox.innerHTML="Extraction failed"
+
+}
+
+}
+
+/* SMART SCANNER */
+
+async function smartExtract(url){
+
+let resultBox=document.getElementById("videoResult")
+
+resultBox.innerHTML="Scanning for streams..."
+
+let res=await fetch(PROXY+encodeURIComponent(url))
+let html=await res.text()
+
+let links=[]
+
+/* DESIMMS CDN */
+
+let cdn=html.match(/https:\/\/cdn\.desimms\.com\.co\/[^"' ]+\.mp4/g)
+
+if(cdn){
+cdn.forEach(l=>links.push({type:"desimms",url:l}))
+}
+
+/* VIDARA */
+
+let vidara=html.match(/https?:\/\/vidara\.to\/v\/[A-Za-z0-9]+/g)
+
+if(vidara){
+vidara.forEach(l=>links.push({type:"vidara",url:l}))
+}
+
+/* VIDNEST */
+
+let vidnest=html.match(/https?:\/\/vidnest[^"' ]+/g)
+
+if(vidnest){
+vidnest.forEach(l=>links.push({type:"vidnest",url:l}))
+}
+
+/* LULU */
+
+let lulu=html.match(/https?:\/\/lulu[^"' ]+/g)
+
+if(lulu){
+lulu.forEach(l=>links.push({type:"lulu",url:l}))
+}
+
+/* BOODSTREAM */
+
+let bood=html.match(/https?:\/\/share\.boodstream[^"' ]+/g)
+
+if(bood){
+bood.forEach(l=>links.push({type:"boodstream",url:l}))
+}
+
+/* MIRRORS */
+
+let mirror=html.match(/https?:\/\/(?:strcloud\.club|tapeadsenjoyer\.com|shavetape\.cash)\/v\/[^"' ]+/g)
+
+if(mirror){
+mirror.forEach(l=>links.push({type:"mirror",url:l}))
+}
+
+if(links.length===0){
+
+resultBox.innerHTML="No streams detected"
+return
+
+}
+
+let buttons="<h3>Available Streams</h3>"
+
+links.forEach(l=>{
+
+buttons+=`
+<button onclick="runExtractor('${l.type}','${l.url}')">
+${l.type.toUpperCase()}
+</button>
 `
 
-playerContainer.scrollIntoView({behavior:"smooth"})
+})
 
-}else{
+resultBox.innerHTML=buttons
 
-playerContainer.innerHTML="Video not found"
+}
 
+/* HOST EXTRACTORS */
+
+async function runExtractor(type,url){
+
+let resultBox=document.getElementById("videoResult")
+
+resultBox.innerHTML="Extracting stream..."
+
+try{
+
+/* DESIMMS */
+
+if(type==="desimms"){
+
+resultBox.innerHTML=`
+<video controls width="100%">
+<source src="${url}">
+</video>
+`
+return
+}
+
+/* VIDARA */
+
+if(type==="vidara"){
+
+let id=url.split("/v/")[1]
+
+let api=`https://vidara.so/api/stream?filecode=${id}`
+
+let res=await fetch(api)
+let data=await res.json()
+
+let stream=data.streaming_url
+
+resultBox.innerHTML=`
+
+<h3>${data.title}</h3>
+<img src="${data.thumbnail}" width="200"><br><br>
+
+<video controls width="100%">
+<source src="${stream}">
+</video>
+
+`
+return
+}
+
+/* MIRROR → STREAMTAPE */
+
+if(type==="mirror"){
+
+let id=url.split("/v/")[1].split("/")[0]
+
+let embed=`https://streamtape.com/e/${id}`
+
+resultBox.innerHTML=`
+
+<iframe
+src="${embed}"
+width="100%"
+height="400"
+frameborder="0"
+allowfullscreen>
+</iframe>
+
+`
+return
+}
+
+/* BOODSTREAM */
+
+if(type==="boodstream"){
+
+let page=await fetch(PROXY+encodeURIComponent(url))
+let html=await page.text()
+
+let mp4=html.match(/<video[^>]+src="([^"]+\.mp4)/)
+
+if(mp4){
+
+resultBox.innerHTML=`
+<video controls width="100%">
+<source src="${mp4[1]}">
+</video>
+`
+
+}
+
+return
+}
+
+/* VIDNEST + LULU */
+
+if(type==="vidnest" || type==="lulu"){
+
+let res=await fetch(PROXY+encodeURIComponent(url))
+let html=await res.text()
+
+let file=html.match(/file\s*:\s*"([^"]+)"/)
+
+if(file){
+
+let stream=file[1]
+
+if(stream.includes(".m3u8")){
+stream=PROXY+encodeURIComponent(stream)
+}
+
+resultBox.innerHTML=`
+<video controls width="100%">
+<source src="${stream}">
+</video>
+`
+
+}
+
+return
 }
 
 }catch(e){
 
-playerContainer.innerHTML="Extraction failed"
+resultBox.innerHTML="Extraction failed"
 
 }
 
 }
+
+/* CATEGORY SYSTEM (LIKE POSTS) */
+
+async function loadCategories(){
+
+document.getElementById("posts").innerHTML=""
+document.getElementById("postView").style.display="none"
+
+let res=await fetch(`${API}/categories?per_page=8&page=${categoryPage}`)
+let cats=await res.json()
+
+let container=document.getElementById("categories")
+container.innerHTML=""
+
+for(let c of cats){
+
+let img=""
+
+try{
+
+let p=await fetch(`${API}/posts?_embed&per_page=1&categories=${c.id}`)
+let pdata=await p.json()
+
+if(pdata[0] && pdata[0]._embedded && pdata[0]._embedded["wp:featuredmedia"])
+img=pdata[0]._embedded["wp:featuredmedia"][0].source_url
+
+}catch(e){}
+
+let div=document.createElement("div")
+div.className="post"
+
+div.innerHTML=`
+<img src="${img}">
+<h3>${c.name}</h3>
+`
+
+div.onclick=()=>{
+currentCategory=c.id
+currentPage=1
+document.getElementById("categories").innerHTML=""
+loadPosts()
+}
+
+container.appendChild(div)
+
+}
+
+renderCategoryNav()
+
+}
+
+function renderCategoryNav(){
+
+let nav=document.createElement("div")
+
+nav.innerHTML=`
+
+<div style="text-align:center;padding:10px">
+
+<button onclick="prevCat()">Previous</button>
+
+<span style="margin:0 10px">Page ${categoryPage}</span>
+
+<button onclick="nextCat()">Next</button>
+
+</div>
+
+`
+
+document.getElementById("categories").appendChild(nav)
+
+}
+
+function nextCat(){
+categoryPage++
+loadCategories()
+}
+
+function prevCat(){
+if(categoryPage>1){
+categoryPage--
+loadCategories()
+}
+}
+
+/* NAVIGATION TOP */
+
+document.getElementById("latestBtn").onclick=()=>{
+currentCategory=null
+currentSearch=""
+currentPage=1
+loadPosts()
+}
+
+document.getElementById("catBtn").onclick=loadCategories
+
+document.getElementById("searchBtn").onclick=()=>{
+currentSearch=document.getElementById("searchBox").value
+currentPage=1
+loadPosts()
+}
+
+document.getElementById("nextBtn").onclick=()=>{
+currentPage++
+document.getElementById("pageInput").value=currentPage
+document.getElementById("pageInputBottom").value=currentPage
+loadPosts()
+}
+
+document.getElementById("prevBtn").onclick=()=>{
+if(currentPage>1){
+currentPage--
+document.getElementById("pageInput").value=currentPage
+document.getElementById("pageInputBottom").value=currentPage
+loadPosts()
+}
+}
+
+document.getElementById("goBtn").onclick=()=>{
+currentPage=parseInt(document.getElementById("pageInput").value)
+document.getElementById("pageInputBottom").value=currentPage
+loadPosts()
+}
+
+/* BOTTOM NAVIGATION */
 
 function nextPage(){
-page++
-document.getElementById("pageInput").value=page
-loadSeries()
+currentPage++
+document.getElementById("pageInput").value=currentPage
+document.getElementById("pageInputBottom").value=currentPage
+loadPosts()
 }
 
 function prevPage(){
-if(page>1)page--
-document.getElementById("pageInput").value=page
-loadSeries()
+if(currentPage>1){
+currentPage--
+document.getElementById("pageInput").value=currentPage
+document.getElementById("pageInputBottom").value=currentPage
+loadPosts()
+}
 }
 
-function goPage(){
-page=parseInt(document.getElementById("pageInput").value)
-loadSeries()
+function goBottom(){
+currentPage=parseInt(document.getElementById("pageInputBottom").value)
+document.getElementById("pageInput").value=currentPage
+loadPosts()
 }
 
-loadSeries()
+loadPosts()
 
 </script>
 
