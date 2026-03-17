@@ -11,6 +11,7 @@
             --card-bg: #121212;
             --text: #ffffff;
             --text-dim: #888;
+            --accent: #00ff00;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -24,10 +25,12 @@
             user-select: none;
         }
 
+        .icon { width: 16px; height: 16px; vertical-align: middle; fill: currentColor; }
+
         header {
             background: rgba(18, 18, 18, 0.95);
             backdrop-filter: blur(10px);
-            padding: 15px;
+            padding: 12px;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -39,13 +42,13 @@
             color: var(--primary);
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-weight: bold;
         }
 
         .controls {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             align-items: center;
         }
 
@@ -53,9 +56,12 @@
             background: #1e1e1e;
             border: 1px solid #333;
             color: white;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-size: 14px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-main {
@@ -63,10 +69,9 @@
             border: none;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s;
         }
 
-        .btn-main:active { transform: scale(0.95); }
+        #search-input { flex-grow: 1; }
 
         .content-grid {
             display: grid;
@@ -79,7 +84,7 @@
 
         .card {
             background: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
             border: 1px solid #222;
             position: relative;
@@ -92,61 +97,60 @@
             aspect-ratio: 16/9;
             background: #000;
             position: relative;
-            overflow: hidden;
         }
 
         .thumb-container img {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
         }
 
-        .card-info {
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            flex-grow: 1;
+        .hd-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.8);
+            color: var(--accent);
+            padding: 2px 5px;
+            font-size: 8px;
+            font-weight: bold;
+            border: 1px solid var(--accent);
+            border-radius: 3px;
+            z-index: 2;
         }
+
+        .cat-overlay {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(transparent, rgba(255, 0, 50, 0.95));
+            color: white;
+            padding: 15px 5px 5px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .card-info { padding: 8px; flex-grow: 1; }
 
         .card-title {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             line-height: 1.3;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            height: 32px;
             overflow: hidden;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
         }
 
-        .cat-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255, 0, 50, 0.9);
-            color: white;
-            padding: 8px 5px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: bold;
-            display: flex;
-            flex-direction: row;
-            gap: 2px;
-            align-items: center;
-            justify-content: center;
-            height: 5px;
-        }
-
         .upload-meta {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-dim);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             border-top: 1px solid #222;
             padding-top: 6px;
+            display: flex;
+            justify-content: space-between;
         }
 
         .overlay {
@@ -159,41 +163,44 @@
             padding: 20px;
         }
 
-        .video-box {
-            width: 100%;
-            max-width: 800px;
-            margin: 20px auto;
-        }
-
-        video {
-            width: 100%;
-            border-radius: 8px;
-            background: #000;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        #duration-badge {
+            background: #1a1a1a;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--accent);
+            border: 1px solid #333;
+            margin: 10px 0;
+            display: inline-block;
         }
 
         .pagination {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            padding: 25px 10px;
-            background: var(--bg);
+            gap: 8px;
+            padding: 20px 10px;
         }
 
-        .pg-num { width: 45px; text-align: center; background: #000; border: 1px solid var(--primary); }
-
-        footer { border-top: 1px solid #222; margin-top: 10px; }
+        .pg-num { width: 45px; text-align: center; background: #000; border: 1px solid var(--primary); color: white; }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
+
+<svg style="display:none;">
+    <symbol id="icon-latest" viewBox="0 0 24 24"><path d="M13 3l-2 5h5l-6 13 2-5h-5l6-13z"/></symbol>
+    <symbol id="icon-cat" viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/></symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+</svg>
 
 <header>
     <div class="history-stack" id="stack-ui">HOME</div>
     <div class="controls">
-        <button class="btn-main" onclick="nav.toCategories()">CATEGORIES</button>
-        <input type="text" id="search-input" placeholder="Search movies...">
-        <button class="btn-main" onclick="nav.doSearch()">GO</button>
+        <button onclick="nav.toLatest()" style="background:#222;"><svg class="icon"><use href="#icon-latest"></use></svg> LATEST</button>
+        <button onclick="nav.toCategories()" style="background:#222;"><svg class="icon"><use href="#icon-cat"></use></svg> CATS</button>
+        <input type="text" id="search-input" placeholder="Search...">
+        <button class="btn-main" onclick="nav.doSearch()"><svg class="icon"><use href="#icon-search"></use></svg> GO</button>
     </div>
 </header>
 
@@ -203,37 +210,27 @@
 
 <div id="player-view" class="overlay">
     <button class="btn-main" onclick="nav.back()">← BACK</button>
-    <div class="video-box">
-        <h2 id="video-title" style="font-size: 1.2rem; margin-bottom: 20px;"></h2>
-        <div id="extract-screen" style="text-align: center; padding: 60px 20px; border: 2px dashed #333; border-radius: 12px;">
-            <button class="btn-main" id="btn-extract" style="padding: 15px 30px;">EXTRACT REAL VIDEO LINK</button>
+    <div class="video-box" style="max-width:800px; margin:20px auto;">
+        <h2 id="video-title" style="font-size: 1.1rem; margin-bottom: 5px;"></h2>
+        <div id="duration-badge" style="display: none;">LENGTH: Calculating...</div>
+        <div id="extract-screen" style="text-align:center; padding:50px 20px; border:1px solid #333; border-radius:12px; background:#0a0a0a;">
+            <p id="status-text" style="color:#888; margin-bottom:15px;">Ready to extract stream...</p>
+            <button class="btn-main" id="btn-extract" style="padding:12px 30px; margin:0 auto;"><svg class="icon"><use href="#icon-play"></use></svg> EXTRACT LINK</button>
         </div>
-        <div id="video-wrap" style="display:none;">
-            <video id="html5-player" controls playsinline preload="auto"></video>
-        </div>
+        <div id="video-wrap" style="display:none; margin-top:15px;"><video id="html5-player" controls playsinline style="width:100%; border-radius:8px;"></video></div>
     </div>
 </div>
 
 <script>
-(function hideLogs() {
-    const blind = () => {};
-    console.log = blind; console.info = blind; console.warn = blind; console.error = blind;
-})();
-
 const _A = "aHR0cHM6Ly9rb3JlYW5wb3JubW92aWUuY29tL3dwLWpzb24vd3AvdjI=";
 const _API = () => atob(_A);
+const _PROXY = "https://allinone.godess.workers.dev/?url=";
 
-let state = {
-    view: 'latest', 
-    page: 1,
-    total: 1,
-    catId: null,
-    history: ['HOME']
-};
+let state = { view: 'latest', page: 1, total: 1, catId: null, history: ['HOME'] };
 
-window.onpopstate = (event) => {
-    if (event.state) {
-        state = event.state;
+window.onpopstate = (e) => {
+    if (e.state) {
+        state = e.state;
         document.getElementById('player-view').style.display = 'none';
         document.getElementById('html5-player').pause();
         render();
@@ -241,29 +238,42 @@ window.onpopstate = (event) => {
 };
 
 const nav = {
-    push: (newState) => {
-        state = { ...state, ...newState };
-        history.pushState(state, '');
-        render();
-    },
+    push: (ns) => { state = { ...state, ...ns }; history.pushState(state, ''); render(); },
     back: () => history.back(),
+    toLatest: () => nav.push({ view: 'latest', page: 1, history: ['HOME'] }),
     toCategories: () => nav.push({ view: 'categories', page: 1, history: ['HOME', 'CATEGORIES'] }),
     doSearch: () => {
         const q = document.getElementById('search-input').value;
-        nav.push({ view: 'search', query: q, page: 1, history: ['HOME', 'SEARCH: ' + q] });
+        if(q) nav.push({ view: 'search', query: q, page: 1, history: ['HOME', 'SEARCH: '+q] });
     },
-    openPlayer: (post) => {
-        document.getElementById('video-title').innerText = post.title.rendered;
+    openPlayer: (p) => {
+        const player = document.getElementById('html5-player');
+        const badge = document.getElementById('duration-badge');
+        document.getElementById('video-title').innerText = p.title.rendered;
+        badge.style.display = 'none';
         document.getElementById('player-view').style.display = 'block';
         document.getElementById('video-wrap').style.display = 'none';
         document.getElementById('extract-screen').style.display = 'block';
         
-        document.getElementById('btn-extract').onclick = () => {
-            const player = document.getElementById('html5-player');
-            player.src = "https://koreanporn.stream/Married%20Woman%20Secretly%20Getting%20A%20Finishing%20Inside%20(2025).mp4";
-            document.getElementById('extract-screen').style.display = 'none';
-            document.getElementById('video-wrap').style.display = 'block';
-            player.play();
+        player.onloadedmetadata = () => {
+            const m = Math.floor(player.duration / 60);
+            badge.innerText = `LENGTH: ${Math.floor(m/60)}hr ${m%60}m ${Math.floor(player.duration%60)}s`;
+            badge.style.display = 'inline-block';
+        };
+
+        document.getElementById('btn-extract').onclick = async function() {
+            this.disabled = true; this.innerText = "EXTRACTING...";
+            try {
+                const res = await fetch(_PROXY + encodeURIComponent(p.link));
+                const html = await res.text();
+                const match = html.match(/<meta[^>]*itemprop=["']contentURL["'][^>]*content=["']([^"']+)["']/i);
+                if (match && match[1]) {
+                    player.src = match[1];
+                    document.getElementById('extract-screen').style.display = 'none';
+                    document.getElementById('video-wrap').style.display = 'block';
+                    player.play();
+                } else { alert("Link not found on page."); }
+            } catch (e) { alert("Proxy Error."); this.disabled = false; }
         };
         history.pushState({view: 'player_open'}, '');
     }
@@ -271,94 +281,55 @@ const nav = {
 
 async function render() {
     const grid = document.getElementById('display-engine');
-    const stack = document.getElementById('stack-ui');
-    stack.innerText = state.history.join(' > ');
-    grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:100px;">LOADING...</div>';
+    document.getElementById('stack-ui').innerText = state.history.join(' > ');
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:100px;">LOADING...</div>';
 
     if (state.view === 'categories') {
         const res = await fetch(`${_API()}/categories?per_page=50&hide_empty=true`);
         const cats = await res.json();
-        
-        const catItems = await Promise.all(cats.map(async (c) => {
+        const items = await Promise.all(cats.map(async (c) => {
             const pRes = await fetch(`${_API()}/posts?categories=${c.id}&per_page=1&_embed`);
             const pData = await pRes.json();
             const img = pData[0]?._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-            return `
-                <div class="card" onclick="nav.push({view:'cat_posts', catId:${c.id}, history:['HOME', '${c.name}'], page:1})">
-                    <div class="thumb-container"><img src="${img}" loading="lazy"></div>
-                    <div class="cat-overlay">
-                        <span>${c.name.toUpperCase()}</span>
-                        <span style="font-size:9px; opacity:0.8;">(${c.count} POSTS)</span>
-                    </div>
-                </div>`;
+            return `<div class="card" onclick="nav.push({view:'cat_posts', catId:${c.id}, history:['HOME', '${c.name}'], page:1})">
+                <div class="thumb-container"><img src="${img}" loading="lazy"><div class="cat-overlay">${c.name.toUpperCase()} (${c.count})</div></div>
+            </div>`;
         }));
-        grid.innerHTML = catItems.join('');
+        grid.innerHTML = items.join('');
         document.querySelectorAll('.pagination').forEach(el => el.innerHTML = '');
-    } 
-    else {
+    } else {
         let url = `${_API()}/posts?per_page=16&page=${state.page}&_embed`;
         if (state.view === 'cat_posts') url += `&categories=${state.catId}`;
         if (state.view === 'search') url += `&search=${state.query}`;
-
         try {
             const res = await fetch(url);
             state.total = res.headers.get('X-WP-TotalPages') || 1;
             const posts = await res.json();
-            
             grid.innerHTML = posts.map(p => {
-                const dateObj = new Date(p.date);
-                const dateStr = dateObj.toLocaleDateString();
-                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                return `
-                <div class="card" onclick='nav.openPlayer(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
-                    <div class="thumb-container">
-                        <img src="${p._embedded?.['wp:featuredmedia']?.[0]?.source_url || ''}" loading="lazy">
-                    </div>
-                    <div class="card-info">
-                        <div class="card-title">${p.title.rendered}</div>
-                        <div class="upload-meta">
-                            <span>📅 ${dateStr}</span>
-                            <span>🕒 ${timeStr}</span>
-                        </div>
-                    </div>
-                </div>
-            `}).join('');
+                const dt = new Date(p.date);
+                return `<div class="card" onclick='nav.openPlayer(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+                    <div class="thumb-container"><span class="hd-badge">4K PREMIUM</span><img src="${p._embedded?.['wp:featuredmedia']?.[0]?.source_url || ''}" loading="lazy"></div>
+                    <div class="card-info"><div class="card-title">${p.title.rendered}</div>
+                    <div class="upload-meta"><span>📅 ${dt.toLocaleDateString()}</span><span>🕒 ${dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div></div>
+                </div>`;
+            }).join('');
             renderPagination();
-        } catch (e) {
-            grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center;">Empty or Connection Error.</div>';
-        }
+        } catch (e) { grid.innerHTML = 'Error Loading.'; }
     }
 }
 
 function renderPagination() {
-    const html = `
-        <button class="btn-main" onclick="changePage(-1)" ${state.page <= 1 ? 'disabled' : ''}>PREV</button>
+    const h = `<button class="btn-main" onclick="changePage(-1)" ${state.page <= 1 ? 'disabled' : ''}>PREV</button>
+        <span style="font-size:11px;">PAGE <b>${state.page}</b> / <b>${state.total}</b></span>
         <input type="number" class="pg-num" value="${state.page}" id="jump-in">
-        <span style="font-size:12px">of ${state.total}</span>
         <button class="btn-main" onclick="goJump()">GO</button>
-        <button class="btn-main" onclick="changePage(1)" ${state.page >= state.total ? 'disabled' : ''}>NEXT</button>
-    `;
-    document.getElementById('pag-top').innerHTML = html;
-    document.getElementById('pag-bottom').innerHTML = html;
+        <button class="btn-main" onclick="changePage(1)" ${state.page >= state.total ? 'disabled' : ''}>NEXT</button>`;
+    document.getElementById('pag-top').innerHTML = h; document.getElementById('pag-bottom').innerHTML = h;
 }
 
-function changePage(step) {
-    state.page += step;
-    render();
-    window.scrollTo(0, 0);
-}
+function changePage(s) { state.page += s; render(); window.scrollTo(0,0); }
+function goJump() { const v = parseInt(document.getElementById('jump-in').value); if (v >= 1 && v <= state.total) { state.page = v; render(); window.scrollTo(0,0); } }
 
-function goJump() {
-    const val = parseInt(document.getElementById('jump-in').value);
-    if (val >= 1 && val <= state.total) {
-        state.page = val;
-        render();
-        window.scrollTo(0, 0);
-    }
-}
-
-history.replaceState(state, '');
 render();
 </script>
 </body>
