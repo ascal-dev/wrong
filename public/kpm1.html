@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KPM | Premium Portal</title>
+    <style>
+        :root {
+            --primary: #FF0032;
+            --bg: #050505;
+            --card-bg: #121212;
+            --text: #ffffff;
+            --text-dim: #888;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        header {
+            background: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #222;
+        }
+
+        .history-stack {
+            font-size: 10px;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input, button {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            color: white;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .btn-main {
+            background: var(--primary);
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .btn-main:active { transform: scale(0.95); }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 12px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #222;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .thumb-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .thumb-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .card-info {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex-grow: 1;
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.3;
+            margin-bottom: 6px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .cat-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 0, 50, 0.9);
+            color: white;
+            padding: 8px 5px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: row;
+            gap: 2px;
+            align-items: center;
+            justify-content: center;
+            height: 5px;
+        }
+
+        .upload-meta {
+            font-size: 10px;
+            color: var(--text-dim);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #222;
+            padding-top: 6px;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 1000;
+            display: none;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .video-box {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 25px 10px;
+            background: var(--bg);
+        }
+
+        .pg-num { width: 45px; text-align: center; background: #000; border: 1px solid var(--primary); }
+
+        footer { border-top: 1px solid #222; margin-top: 10px; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<header>
+    <div class="history-stack" id="stack-ui">HOME</div>
+    <div class="controls">
+        <button class="btn-main" onclick="nav.toCategories()">CATEGORIES</button>
+        <input type="text" id="search-input" placeholder="Search movies...">
+        <button class="btn-main" onclick="nav.doSearch()">GO</button>
+    </div>
+</header>
+
+<div class="pagination" id="pag-top"></div>
+<main class="content-grid" id="display-engine"></main>
+<footer class="pagination" id="pag-bottom"></footer>
+
+<div id="player-view" class="overlay">
+    <button class="btn-main" onclick="nav.back()">← BACK</button>
+    <div class="video-box">
+        <h2 id="video-title" style="font-size: 1.2rem; margin-bottom: 20px;"></h2>
+        <div id="extract-screen" style="text-align: center; padding: 60px 20px; border: 2px dashed #333; border-radius: 12px;">
+            <button class="btn-main" id="btn-extract" style="padding: 15px 30px;">EXTRACT REAL VIDEO LINK</button>
+        </div>
+        <div id="video-wrap" style="display:none;">
+            <video id="html5-player" controls playsinline preload="auto"></video>
+        </div>
+    </div>
+</div>
+
+<script>
+(function hideLogs() {
+    const blind = () => {};
+    console.log = blind; console.info = blind; console.warn = blind; console.error = blind;
+})();
+
+const _A = "aHR0cHM6Ly9rb3JlYW5wb3JubW92aWUuY29tL3dwLWpzb24vd3AvdjI=";
+const _API = () => atob(_A);
+
+let state = {
+    view: 'latest', 
+    page: 1,
+    total: 1,
+    catId: null,
+    history: ['HOME']
+};
+
+window.onpopstate = (event) => {
+    if (event.state) {
+        state = event.state;
+        document.getElementById('player-view').style.display = 'none';
+        document.getElementById('html5-player').pause();
+        render();
+    }
+};
+
+const nav = {
+    push: (newState) => {
+        state = { ...state, ...newState };
+        history.pushState(state, '');
+        render();
+    },
+    back: () => history.back(),
+    toCategories: () => nav.push({ view: 'categories', page: 1, history: ['HOME', 'CATEGORIES'] }),
+    doSearch: () => {
+        const q = document.getElementById('search-input').value;
+        nav.push({ view: 'search', query: q, page: 1, history: ['HOME', 'SEARCH: ' + q] });
+    },
+    openPlayer: (post) => {
+        document.getElementById('video-title').innerText = post.title.rendered;
+        document.getElementById('player-view').style.display = 'block';
+        document.getElementById('video-wrap').style.display = 'none';
+        document.getElementById('extract-screen').style.display = 'block';
+        
+        document.getElementById('btn-extract').onclick = () => {
+            const player = document.getElementById('html5-player');
+            player.src = "https://koreanporn.stream/Married%20Woman%20Secretly%20Getting%20A%20Finishing%20Inside%20(2025).mp4";
+            document.getElementById('extract-screen').style.display = 'none';
+            document.getElementById('video-wrap').style.display = 'block';
+            player.play();
+        };
+        history.pushState({view: 'player_open'}, '');
+    }
+};
+
+async function render() {
+    const grid = document.getElementById('display-engine');
+    const stack = document.getElementById('stack-ui');
+    stack.innerText = state.history.join(' > ');
+    grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:100px;">LOADING...</div>';
+
+    if (state.view === 'categories') {
+        const res = await fetch(`${_API()}/categories?per_page=50&hide_empty=true`);
+        const cats = await res.json();
+        
+        const catItems = await Promise.all(cats.map(async (c) => {
+            const pRes = await fetch(`${_API()}/posts?categories=${c.id}&per_page=1&_embed`);
+            const pData = await pRes.json();
+            const img = pData[0]?._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+            return `
+                <div class="card" onclick="nav.push({view:'cat_posts', catId:${c.id}, history:['HOME', '${c.name}'], page:1})">
+                    <div class="thumb-container"><img src="${img}" loading="lazy"></div>
+                    <div class="cat-overlay">
+                        <span>${c.name.toUpperCase()}</span>
+                        <span style="font-size:9px; opacity:0.8;">(${c.count} POSTS)</span>
+                    </div>
+                </div>`;
+        }));
+        grid.innerHTML = catItems.join('');
+        document.querySelectorAll('.pagination').forEach(el => el.innerHTML = '');
+    } 
+    else {
+        let url = `${_API()}/posts?per_page=16&page=${state.page}&_embed`;
+        if (state.view === 'cat_posts') url += `&categories=${state.catId}`;
+        if (state.view === 'search') url += `&search=${state.query}`;
+
+        try {
+            const res = await fetch(url);
+            state.total = res.headers.get('X-WP-TotalPages') || 1;
+            const posts = await res.json();
+            
+            grid.innerHTML = posts.map(p => {
+                const dateObj = new Date(p.date);
+                const dateStr = dateObj.toLocaleDateString();
+                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                return `
+                <div class="card" onclick='nav.openPlayer(${JSON.stringify(p).replace(/'/g, "&apos;")})'>
+                    <div class="thumb-container">
+                        <img src="${p._embedded?.['wp:featuredmedia']?.[0]?.source_url || ''}" loading="lazy">
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">${p.title.rendered}</div>
+                        <div class="upload-meta">
+                            <span>📅 ${dateStr}</span>
+                            <span>🕒 ${timeStr}</span>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+            renderPagination();
+        } catch (e) {
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center;">Empty or Connection Error.</div>';
+        }
+    }
+}
+
+function renderPagination() {
+    const html = `
+        <button class="btn-main" onclick="changePage(-1)" ${state.page <= 1 ? 'disabled' : ''}>PREV</button>
+        <input type="number" class="pg-num" value="${state.page}" id="jump-in">
+        <span style="font-size:12px">of ${state.total}</span>
+        <button class="btn-main" onclick="goJump()">GO</button>
+        <button class="btn-main" onclick="changePage(1)" ${state.page >= state.total ? 'disabled' : ''}>NEXT</button>
+    `;
+    document.getElementById('pag-top').innerHTML = html;
+    document.getElementById('pag-bottom').innerHTML = html;
+}
+
+function changePage(step) {
+    state.page += step;
+    render();
+    window.scrollTo(0, 0);
+}
+
+function goJump() {
+    const val = parseInt(document.getElementById('jump-in').value);
+    if (val >= 1 && val <= state.total) {
+        state.page = val;
+        render();
+        window.scrollTo(0, 0);
+    }
+}
+
+history.replaceState(state, '');
+render();
+</script>
+</body>
+</html>
