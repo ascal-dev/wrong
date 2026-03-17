@@ -25,7 +25,6 @@
             overflow-x: hidden;
         }
 
-        /* Responsive Header */
         header {
             background: rgba(18, 18, 18, 0.98);
             backdrop-filter: blur(10px);
@@ -73,8 +72,8 @@
         }
 
         .btn-main:active { transform: scale(0.95); }
+        .btn-main:disabled { background: #444; cursor: not-allowed; }
 
-        /* Adaptive Grid */
         .content-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -84,7 +83,6 @@
             margin: 0 auto;
         }
 
-        /* 250px - 350px scaling */
         @media (max-width: 250px) {
             .content-grid { grid-template-columns: 1fr; }
             .btn-main { padding: 8px 5px; font-size: 11px; }
@@ -118,7 +116,6 @@
 
         .meta-timestamp { font-size: 9px; color: var(--text-dim); display: flex; justify-content: space-between; }
 
-        /* Sub Post Page */
         #post-detail-view {
             display: none;
             position: fixed;
@@ -143,15 +140,14 @@
         
         .full-meta { font-size: 11px; color: var(--text-dim); margin-bottom: 15px; display: flex; gap: 15px; }
 
-        /* Media Gallery */
         .image-gallery { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
         .image-gallery img { width: 100%; border-radius: 8px; border: 1px solid #333; height: auto; }
 
         .video-box { width: 100%; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid #222; margin-top: 15px; }
         .extract-screen { padding: 40px 10px; text-align: center; }
+        #status-text { display: block; font-size: 11px; color: var(--text-dim); margin-top: 10px; }
         video { width: 100%; display: block; }
 
-        /* Pagination */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 15px 10px; }
         .pg-num { width: 45px; text-align: center; border: 1px solid var(--primary); background: #000; }
 
@@ -193,6 +189,7 @@
             <div class="video-box">
                 <div id="extract-screen" class="extract-screen">
                     <button class="btn-main" id="btn-extract" style="padding: 15px 25px;">EXTRACT REAL VIDEO LINK</button>
+                    <span id="status-text">Ready to extract</span>
                 </div>
                 <div id="video-wrap" class="hidden">
                     <video id="html5-player" controls playsinline></video>
@@ -204,16 +201,14 @@
 
 <script>
 const _API = "https://koreanpornmovie.com/wp-json/wp/v2";
+const proxyBase = "https://allinone.godess.workers.dev/?url=";
 let state = { view: 'latest', page: 1, total: 1, catId: null, history: ['HOME'], currentPosts: [] };
 
-// Extracts all unique JPG/PNG sources from post HTML
 function scrapeImages(post) {
     const images = [];
-    // 1. Add featured media if exists
     if(post._embedded?.['wp:featuredmedia']?.[0]?.source_url) {
         images.push(post._embedded['wp:featuredmedia'][0].source_url);
     }
-    // 2. Add all images found in content
     const temp = document.createElement('div');
     temp.innerHTML = post.content.rendered;
     temp.querySelectorAll('img').forEach(img => {
@@ -235,29 +230,64 @@ const nav = {
         const p = state.currentPosts.find(x => x.id === id);
         if(!p) return;
 
-        // UI Setup
         document.getElementById('post-title').innerHTML = p.title.rendered;
         const d = new Date(p.date);
         document.getElementById('post-date').innerText = "📅 " + d.toLocaleDateString();
         document.getElementById('post-time').innerText = "🕒 " + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         document.getElementById('post-body').innerHTML = p.excerpt.rendered;
 
-        // Gallery Rendering
         const imgs = scrapeImages(p);
         document.getElementById('post-gallery').innerHTML = imgs.map(src => `<img src="${src}" alt="media">`).join('');
         
-        // Video/Player Logic
+        // Reset Video Player UI
+        const btn = document.getElementById('btn-extract');
+        const status = document.getElementById('status-text');
         const player = document.getElementById('html5-player');
-        player.pause(); player.src = "";
+        
+        player.pause(); 
+        player.src = "";
+        btn.disabled = false;
+        btn.innerText = "EXTRACT REAL VIDEO LINK";
+        status.innerText = "Ready to extract";
+        
         document.getElementById('extract-screen').classList.remove('hidden');
         document.getElementById('video-wrap').classList.add('hidden');
         
-        document.getElementById('btn-extract').onclick = () => {
-            // Simulated extraction logic
-            player.src = "https://koreanporn.stream/Married%20Woman%20Secretly%20Getting%20A%20Finishing%20Inside%20(2025).mp4";
-            document.getElementById('extract-screen').classList.add('hidden');
-            document.getElementById('video-wrap').classList.remove('hidden');
-            player.play();
+        // INTEGRATED EXTRACTION LOGIC
+        btn.onclick = async () => {
+            btn.disabled = true;
+            btn.innerText = "EXTRACTING...";
+            status.innerText = "Visiting original post via worker...";
+
+            try {
+                // p.link is the original URL from WordPress
+                const response = await fetch(proxyBase + encodeURIComponent(p.link));
+                const html = await response.text();
+
+                // Regex for contentURL
+                const regex = /<meta[^>]*itemprop=["']contentURL["'][^>]*content=["']([^"']+)["']/i;
+                const match = html.match(regex);
+
+                if (match && match[1]) {
+                    const videoUrl = match[1];
+                    
+                    document.getElementById('extract-screen').classList.add('hidden');
+                    document.getElementById('video-wrap').classList.remove('hidden');
+                    
+                    player.src = videoUrl;
+                    player.play();
+                    console.log("Success! Extracted URL:", videoUrl);
+                } else {
+                    status.innerText = "Failed: contentURL tag not found on page.";
+                    btn.innerText = "NOT FOUND";
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                status.innerText = "Error: Worker proxy is unreachable.";
+                btn.innerText = "RETRY";
+                btn.disabled = false;
+                console.error("Extraction error:", err);
+            }
         };
 
         nav.update({view: 'post_single'});
