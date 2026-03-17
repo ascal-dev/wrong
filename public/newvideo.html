@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Video</title>
+
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.7.11/dist/shaka-player.compiled.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+body{
+margin:0;
+font-family:sans-serif;
+background:#f2e9dc;
+}
+
+.container{
+width:95%;
+max-width:1200px;
+margin:auto;
+padding:20px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:20px;
+}
+
+.card{
+background:white;
+border-radius:12px;
+overflow:hidden;
+box-shadow:0 10px 20px rgba(0,0,0,0.08);
+}
+
+.card img{
+width:100%;
+height:280px;
+object-fit:contain;
+background:#eee;
+}
+
+.card-body{
+padding:15px;
+}
+
+button{
+padding:10px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+.primary{
+background:#bf5b2c;
+color:white;
+}
+
+.secondary{
+background:#eee;
+}
+
+.viewer{
+display:none;
+margin-bottom:30px;
+}
+
+.viewer.active{
+display:block;
+}
+
+video{
+width:100%;
+max-height:70vh;
+background:black;
+}
+
+.controls{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+margin-top:10px;
+}
+
+.pagination{
+margin:20px 0;
+display:flex;
+gap:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>New Video</h1>
+
+<div class="pagination">
+<button id="prevPage">Prev</button>
+<span id="pageInfo"></span>
+<button id="nextPage">Next</button>
+</div>
+
+<div class="viewer" id="viewer">
+
+<video id="player" controls playsinline></video>
+
+<div class="controls">
+<button id="server1Btn" class="primary">Play Server 1</button>
+<button id="server2Btn" class="secondary">Play Server 2</button>
+<button id="closeViewer">Close</button>
+</div>
+
+</div>
+
+<div id="grid" class="grid"></div>
+
+</div>
+
+<script>
+
+const ITEMS_PER_PAGE = 12;
+
+const JSON_URL =
+"https://raw.githubusercontent.com/ascal-dev/wrong/main/public/new.json";
+
+const STREAM_PROXY =
+"https://allinone.godess.workers.dev/?url=";
+
+const state={
+items:[],
+page:1,
+currentIndex:-1,
+server:"server1"
+};
+
+const grid=document.getElementById("grid");
+const viewer=document.getElementById("viewer");
+const player=document.getElementById("player");
+
+const prevPage=document.getElementById("prevPage");
+const nextPage=document.getElementById("nextPage");
+const pageInfo=document.getElementById("pageInfo");
+
+const server1Btn=document.getElementById("server1Btn");
+const server2Btn=document.getElementById("server2Btn");
+const closeViewer=document.getElementById("closeViewer");
+
+let hls=null;
+let shaka=null;
+
+function totalPages(){
+return Math.max(1,Math.ceil(state.items.length/ITEMS_PER_PAGE));
+}
+
+function clampPage(p){
+return Math.min(Math.max(1,p),totalPages());
+}
+
+function pageItems(){
+const start=(state.page-1)*ITEMS_PER_PAGE;
+return state.items.slice(start,start+ITEMS_PER_PAGE);
+}
+
+function render(){
+
+pageInfo.textContent=
+"Page "+state.page+" / "+totalPages();
+
+grid.innerHTML="";
+
+const items=pageItems();
+
+items.forEach((item,i)=>{
+
+const index=(state.page-1)*ITEMS_PER_PAGE+i;
+
+const card=document.createElement("div");
+card.className="card";
+
+card.innerHTML=`
+
+<img src="${item.img}" loading="lazy">
+
+<div class="card-body">
+
+<h3>${item.title}</h3>
+
+<button class="primary" data-index="${index}" data-server="server1">Server 1</button>
+<button class="secondary" data-index="${index}" data-server="server2">Server 2</button>
+
+</div>
+
+`;
+
+grid.appendChild(card);
+
+});
+
+}
+
+function destroyPlayer(){
+
+if(hls){
+hls.destroy();
+hls=null;
+}
+
+if(shaka){
+shaka.destroy();
+shaka=null;
+}
+
+player.pause();
+player.removeAttribute("src");
+player.load();
+
+}
+
+function proxy(url){
+
+if(location.protocol==="https:" && url.startsWith("http:"))
+return STREAM_PROXY+encodeURIComponent(url);
+
+return url;
+
+}
+
+function isHLS(u){
+return u.includes(".m3u8")||u.includes(".m3u");
+}
+
+function isDASH(u){
+return u.includes(".mpd");
+}
+
+async function play(url){
+
+destroyPlayer();
+
+url=proxy(url);
+
+if(isDASH(url)){
+
+shaka=new shaka.Player(player);
+await shaka.load(url);
+player.play();
+
+}
+
+else if(isHLS(url)){
+
+if(Hls.isSupported()){
+
+hls=new Hls();
+hls.loadSource(url);
+hls.attachMedia(player);
+
+hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+player.play();
+});
+
+}else{
+
+player.src=url;
+player.play();
+
+}
+
+}
+
+else{
+
+player.src=url;
+player.play();
+
+}
+
+}
+
+function openVideo(index,server){
+
+const item=state.items[index];
+if(!item)return;
+
+const url=item[server];
+
+if(!url)return;
+
+state.currentIndex=index;
+state.server=server;
+
+viewer.classList.add("active");
+
+play(url);
+
+}
+
+function closePlayer(){
+
+destroyPlayer();
+
+viewer.classList.remove("active");
+
+state.currentIndex=-1;
+
+}
+
+grid.addEventListener("click",e=>{
+
+const btn=e.target.closest("button");
+
+if(!btn)return;
+
+const index=parseInt(btn.dataset.index);
+const server=btn.dataset.server;
+
+openVideo(index,server);
+
+});
+
+prevPage.onclick=()=>{
+state.page=clampPage(state.page-1);
+render();
+};
+
+nextPage.onclick=()=>{
+state.page=clampPage(state.page+1);
+render();
+};
+
+server1Btn.onclick=()=>{
+if(state.currentIndex>=0)
+openVideo(state.currentIndex,"server1");
+};
+
+server2Btn.onclick=()=>{
+if(state.currentIndex>=0)
+openVideo(state.currentIndex,"server2");
+};
+
+closeViewer.onclick=closePlayer;
+
+async function load(){
+
+const res=await fetch(JSON_URL);
+
+const data=await res.json();
+
+state.items=Array.isArray(data)?data:[];
+
+render();
+
+}
+
+load();
+
+</script>
+
+</body>
+</html>
