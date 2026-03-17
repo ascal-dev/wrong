@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Video Archive</title>
+
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.7.11/dist/shaka-player.compiled.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+
+*{
+box-sizing:border-box;
+margin:0;
+padding:0;
+}
+
+body{
+font-family:Arial,Helvetica,sans-serif;
+background:#f2e9dc;
+}
+
+.container{
+width:95%;
+max-width:1200px;
+margin:auto;
+padding:20px;
+}
+
+h1{
+margin-bottom:20px;
+}
+
+/* PLAYER */
+
+.viewer{
+display:none;
+margin-bottom:25px;
+background:#fff;
+padding:15px;
+border-radius:10px;
+box-shadow:0 10px 20px rgba(0,0,0,0.08);
+}
+
+.viewer.active{
+display:block;
+}
+
+video{
+width:100%;
+max-height:70vh;
+background:black;
+border-radius:6px;
+}
+
+.player-controls{
+margin-top:12px;
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+button{
+border:none;
+border-radius:6px;
+padding:10px 14px;
+cursor:pointer;
+}
+
+.primary{
+background:#bf5b2c;
+color:#fff;
+}
+
+.secondary{
+background:#eaeaea;
+}
+
+/* GRID */
+
+.grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:20px;
+}
+
+.card{
+background:#fff;
+border-radius:10px;
+overflow:hidden;
+box-shadow:0 10px 20px rgba(0,0,0,0.08);
+display:flex;
+flex-direction:column;
+}
+
+.card img{
+width:100%;
+height:260px;
+object-fit:cover;
+background:#eee;
+}
+
+.card-body{
+padding:14px;
+display:flex;
+flex-direction:column;
+gap:12px;
+flex:1;
+}
+
+.card-title{
+font-size:15px;
+font-weight:600;
+line-height:1.4;
+min-height:42px;
+}
+
+.card-actions{
+display:flex;
+gap:8px;
+margin-top:auto;
+}
+
+.card-actions button{
+flex:1;
+}
+
+/* PAGINATION */
+
+.pagination{
+display:flex;
+gap:10px;
+align-items:center;
+margin-bottom:20px;
+flex-wrap:wrap;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Video Archive</h1>
+
+<div class="pagination">
+<button id="prevPage">Prev</button>
+<span id="pageInfo"></span>
+<button id="nextPage">Next</button>
+</div>
+
+<div id="viewer" class="viewer">
+
+<video id="player" controls playsinline></video>
+
+<div class="player-controls">
+<button id="server1Btn" class="primary">Server 1</button>
+<button id="server2Btn" class="secondary">Server 2</button>
+<button id="closeBtn">Close</button>
+</div>
+
+</div>
+
+<div id="grid" class="grid"></div>
+
+</div>
+
+<script>
+
+const JSON_URL =
+"https://raw.githubusercontent.com/ascal-dev/wrong/main/public/new.json"
+
+const ITEMS_PER_PAGE = 12
+
+const STREAM_PROXY =
+"https://allinone.godess.workers.dev/?url="
+
+const state={
+items:[],
+page:1,
+currentIndex:-1,
+server:"server1"
+}
+
+const grid=document.getElementById("grid")
+const viewer=document.getElementById("viewer")
+const player=document.getElementById("player")
+
+const prevPage=document.getElementById("prevPage")
+const nextPage=document.getElementById("nextPage")
+const pageInfo=document.getElementById("pageInfo")
+
+const server1Btn=document.getElementById("server1Btn")
+const server2Btn=document.getElementById("server2Btn")
+const closeBtn=document.getElementById("closeBtn")
+
+let hls=null
+let shaka=null
+
+function totalPages(){
+return Math.max(1,Math.ceil(state.items.length/ITEMS_PER_PAGE))
+}
+
+function clampPage(p){
+return Math.min(Math.max(1,p),totalPages())
+}
+
+function pageItems(){
+const start=(state.page-1)*ITEMS_PER_PAGE
+return state.items.slice(start,start+ITEMS_PER_PAGE)
+}
+
+function render(){
+
+pageInfo.textContent=
+"Page "+state.page+" / "+totalPages()
+
+grid.innerHTML=""
+
+const items=pageItems()
+
+items.forEach((item,i)=>{
+
+const index=(state.page-1)*ITEMS_PER_PAGE+i
+
+const card=document.createElement("div")
+card.className="card"
+
+card.innerHTML=`
+
+<img src="${item.img}" loading="lazy">
+
+<div class="card-body">
+
+<div class="card-title">${item.title}</div>
+
+<div class="card-actions">
+
+<button class="primary"
+data-index="${index}"
+data-server="server1">Server 1</button>
+
+<button class="secondary"
+data-index="${index}"
+data-server="server2">Server 2</button>
+
+</div>
+
+</div>
+`
+
+grid.appendChild(card)
+
+})
+
+}
+
+/* PLAYER */
+
+function destroyPlayer(){
+
+if(hls){
+hls.destroy()
+hls=null
+}
+
+if(shaka){
+shaka.destroy()
+shaka=null
+}
+
+player.pause()
+player.removeAttribute("src")
+player.load()
+
+}
+
+function proxy(url){
+
+if(location.protocol==="https:" && url.startsWith("http:"))
+return STREAM_PROXY+encodeURIComponent(url)
+
+return url
+
+}
+
+function isHLS(u){
+return u.includes(".m3u8")
+}
+
+function isDASH(u){
+return u.includes(".mpd")
+}
+
+async function play(url){
+
+destroyPlayer()
+
+url=proxy(url)
+
+if(isDASH(url)){
+
+shaka=new shaka.Player(player)
+await shaka.load(url)
+player.play()
+
+}
+
+else if(isHLS(url)){
+
+if(Hls.isSupported()){
+
+hls=new Hls()
+hls.loadSource(url)
+hls.attachMedia(player)
+
+hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+player.play()
+})
+
+}else{
+
+player.src=url
+player.play()
+
+}
+
+}
+
+else{
+
+player.src=url
+player.play()
+
+}
+
+}
+
+/* OPEN VIDEO */
+
+function openVideo(index,server,historyPush=true){
+
+const item=state.items[index]
+
+if(!item)return
+
+const url=item[server]
+
+if(!url)return
+
+state.currentIndex=index
+state.server=server
+
+viewer.classList.add("active")
+
+play(url)
+
+viewer.scrollIntoView({behavior:"smooth"})
+
+if(historyPush){
+
+const u=new URL(location)
+
+u.searchParams.set("page",state.page)
+u.searchParams.set("video",item.id)
+u.searchParams.set("server",server)
+
+history.pushState(
+{page:state.page,video:item.id,server},
+"",
+u
+)
+
+}
+
+}
+
+function closePlayer(){
+
+destroyPlayer()
+viewer.classList.remove("active")
+state.currentIndex=-1
+
+}
+
+/* CLICK EVENTS */
+
+grid.addEventListener("click",e=>{
+
+const btn=e.target.closest("button")
+
+if(!btn)return
+
+const index=parseInt(btn.dataset.index)
+const server=btn.dataset.server
+
+openVideo(index,server)
+
+})
+
+/* PAGINATION */
+
+prevPage.onclick=()=>{
+
+state.page=clampPage(state.page-1)
+render()
+
+}
+
+nextPage.onclick=()=>{
+
+state.page=clampPage(state.page+1)
+render()
+
+}
+
+/* PLAYER BUTTONS */
+
+server1Btn.onclick=()=>{
+if(state.currentIndex>=0)
+openVideo(state.currentIndex,"server1")
+}
+
+server2Btn.onclick=()=>{
+if(state.currentIndex>=0)
+openVideo(state.currentIndex,"server2")
+}
+
+closeBtn.onclick=closePlayer
+
+/* HISTORY BACK */
+
+window.onpopstate=(e)=>{
+
+if(!e.state)return
+
+state.page=e.state.page
+
+render()
+
+const index=state.items.findIndex(
+v=>String(v.id)===String(e.state.video)
+)
+
+if(index>=0){
+openVideo(index,e.state.server,false)
+}
+
+}
+
+/* LOAD JSON */
+
+async function load(){
+
+const res=await fetch(JSON_URL)
+
+const data=await res.json()
+
+state.items=Array.isArray(data)?data:[]
+
+render()
+
+}
+
+load()
+
+</script>
+
+</body>
+</html>
