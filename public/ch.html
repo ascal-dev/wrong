@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>StreamHub Pro - Embed Player</title>
+    <style>
+        :root {
+            --bg: #05070a;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent: #00e5ff;
+            --text: #ffffff;
+            --text-dim: #94a3b8;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: var(--bg); color: var(--text); margin: 0; 
+            background-image: radial-gradient(circle at top right, #111827, #05070a);
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+
+        /* --- HEADER --- */
+        header {
+            background: rgba(5, 7, 10, 0.9);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            padding: 12px; position: sticky; top: 0; z-index: 1000;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .nav-tools { display: flex; gap: 8px; margin-bottom: 10px; }
+        input, select, button {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            color: white; padding: 10px; border-radius: 10px; font-size: 14px; outline: none;
+        }
+        button { cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:active { transform: scale(0.95); }
+        .btn-accent { background: var(--accent); color: #000; border: none; }
+
+        /* --- GRID --- */
+        .grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 12px; padding: 12px; max-width: 1000px; margin: auto;
+        }
+
+        .post-card {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: 15px; overflow: hidden; display: flex; flex-direction: column;
+        }
+
+        .thumb {
+            width: 100%; aspect-ratio: 16/9; background: #000;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+        .details { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; }
+        .details h3 { 
+            font-size: 13px; margin: 0; height: 38px; overflow: hidden; 
+            line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+        }
+
+        .extract-btn {
+            margin-top: auto; width: 100%; padding: 10px;
+            background: rgba(0, 229, 255, 0.1); border: 1px solid var(--accent);
+            color: var(--accent); border-radius: 8px; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        /* --- PLAYER OVERLAY --- */
+        #player-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; display: none; flex-direction: column;
+        }
+        #player-layer.active { display: flex; }
+
+        .p-header { padding: 12px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #222; background: #0a0a0a; }
+        
+        /* The Iframe Player */
+        iframe { width: 100%; flex-grow: 1; border: none; background: #000; }
+
+        /* Status Logs */
+        .extraction-box { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 30px; }
+        .log-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; color: #555; font-size: 13px; }
+        .log-item.active { color: var(--accent); }
+        .log-item.done { color: #00ff88; }
+        .spin { width: 16px; height: 16px; border: 2px solid #222; border-top: 2px solid var(--accent); border-radius: 50%; animation: rot 0.8s linear infinite; }
+        @keyframes rot { 100% { transform: rotate(360deg); } }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="nav-tools">
+        <button id="btn-latest" class="btn-accent" style="flex: 1;">Latest</button>
+        <select id="cat-drop" style="flex: 2;"><option value="">Categories</option></select>
+    </div>
+    <div class="nav-tools">
+        <input type="text" id="search-query" placeholder="Search movies..." style="flex-grow:1;">
+        <button id="search-go">Search</button>
+    </div>
+</header>
+
+<main id="post-grid" class="grid"></main>
+
+<div id="player-layer">
+    <div class="p-header">
+        <button onclick="history.back()">✕ Back</button>
+        <span id="p-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px;"></span>
+    </div>
+    <div id="extract-ui" class="extraction-box">
+        <div id="history-stack"></div>
+    </div>
+    <iframe id="v-frame" class="hidden" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+</div>
+
+<script>
+    const PROXY = "https://allinone.godess.workers.dev/?url=";
+    const API_POSTS = "https://chineseav.net/wp-json/wp/v2/posts";
+    const API_CATS = "https://chineseav.net/wp-json/wp/v2/categories";
+
+    let state = { page: 1, cat: '', search: '' };
+
+    async function init() {
+        loadCats();
+        loadPosts();
+        
+        // Handle Back Button to stop video
+        window.onpopstate = () => {
+            const layer = document.getElementById('player-layer');
+            const frame = document.getElementById('v-frame');
+            layer.classList.remove('active');
+            frame.src = ""; // Critical: Stops the video audio
+            frame.classList.add('hidden');
+        };
+    }
+
+    async function loadCats() {
+        try {
+            const r = await fetch(`${PROXY}${encodeURIComponent(API_CATS + '?per_page=100')}`);
+            const data = await r.json();
+            const drop = document.getElementById('cat-drop');
+            data.forEach(c => { if(c.count > 0) drop.innerHTML += `<option value="${c.id}">${c.name} (${c.count})</option>`; });
+        } catch(e) { console.error("Cat load error"); }
+    }
+
+    async function loadPosts() {
+        const grid = document.getElementById('post-grid');
+        grid.innerHTML = '<p style="grid-column:1/3; text-align:center; padding:50px;">Loading Content...</p>';
+        
+        let url = `${API_POSTS}?per_page=16&page=${state.page}&_embed`;
+        if(state.cat) url += `&categories=${state.cat}`;
+        if(state.search) url += `&search=${encodeURIComponent(state.search)}`;
+
+        try {
+            const r = await fetch(`${PROXY}${encodeURIComponent(url)}`);
+            const posts = await r.json();
+            grid.innerHTML = '';
+            
+            posts.forEach(p => {
+                const img = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://via.placeholder.com/400x225';
+                const cleanTitle = p.title.rendered.replace(/'/g, "");
+                
+                grid.innerHTML += `
+                    <div class="post-card">
+                        <div class="thumb"><img src="${img}" alt="thumbnail"></div>
+                        <div class="details">
+                            <h3>${p.title.rendered}</h3>
+                            <button class="extract-btn" onclick="loadEmbed('${p.link}', '${cleanTitle}')">Open Player</button>
+                        </div>
+                    </div>`;
+            });
+        } catch(e) { grid.innerHTML = '<p style="grid-column:1/3; text-align:center;">Failed to load posts.</p>'; }
+    }
+
+    // --- LOGIC: FETCH EMBED URL & LOAD IFRAME ---
+    async function loadEmbed(postUrl, title) {
+        // Update URL State
+        history.pushState({view: 'player'}, '');
+        
+        const layer = document.getElementById('player-layer');
+        const stack = document.getElementById('history-stack');
+        const frame = document.getElementById('v-frame');
+        const ui = document.getElementById('extract-ui');
+
+        document.getElementById('p-title').innerText = title;
+        layer.classList.add('active');
+        frame.classList.add('hidden');
+        ui.classList.remove('hidden');
+        stack.innerHTML = "";
+
+        const log = (msg) => {
+            const last = stack.querySelector('.active');
+            if(last) { 
+                last.classList.remove('active'); 
+                last.classList.add('done'); 
+                last.querySelector('.spin')?.remove(); 
+            }
+            stack.innerHTML += `<div class="log-item active"><div class="spin"></div> ${msg}</div>`;
+        };
+
+        try {
+            log("Fetching sub-post content...");
+            const res = await fetch(`${PROXY}${encodeURIComponent(postUrl)}`);
+            const html = await res.text();
+            
+            log("Parsing Embed URL...");
+            // Regex to find the itemprop="embedURL" tag
+            const embedMatch = html.match(/itemprop="embedURL" content="([^"]+)"/i);
+            
+            if (embedMatch && embedMatch[1]) {
+                const embedUrl = embedMatch[1];
+                log(`Handshaking with ${new URL(embedUrl).hostname}...`);
+
+                // Wait 1 second for visual effect, then show iframe
+                setTimeout(() => {
+                    ui.classList.add('hidden');
+                    frame.classList.remove('hidden');
+                    frame.src = embedUrl;
+                }, 1000);
+            } else {
+                log("Error: No player found on this page.");
+            }
+        } catch(e) {
+            log("Connection error. Check your proxy.");
+        }
+    }
+
+    // Event Listeners
+    document.getElementById('cat-drop').onchange = (e) => { state.cat = e.target.value; state.page = 1; loadPosts(); };
+    document.getElementById('search-go').onclick = () => { state.search = document.getElementById('search-query').value; state.page = 1; loadPosts(); };
+    document.getElementById('btn-latest').onclick = () => { location.reload(); };
+
+    init();
+</script>
+</body>
+</html>
