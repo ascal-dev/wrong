@@ -222,7 +222,7 @@
                 setTimeout(() => {
                     ui.classList.add('hidden');
                     frame.classList.remove('hidden');
-                    frame.src = embedUrl;
+                    frame.src= PROXY + encodeURIComponent(embedUrl);
                 }, 1000);
             } else {
                 log("Error: No player found on this page.");
