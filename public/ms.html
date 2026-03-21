@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MilfNut Taboo • Direct Stream</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --card: #1f1f1f;
+      --accent: #ff2d55;
+      --text: #f0f0f0;
+      --success: #4caf50;
+      --error: #f44336;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: #000;
+      padding: 1.2rem;
+      text-align: center;
+      border-bottom: 4px solid var(--accent);
+    }
+    h1 { margin:0; font-size:2rem; color:var(--accent); }
+    .container { max-width:1200px; margin:0 auto; padding:1rem; }
+    .search-bar {
+      display: flex;
+      gap: 8px;
+      margin: 1rem 0;
+      max-width: 600px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #222;
+      color: white;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.2rem 1rem;
+    }
+    @media (min-width: 768px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(32%, 1fr)); }
+    }
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.22s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+    .card:hover { transform: scale(1.03); box-shadow: 0 10px 24px rgba(255,45,85,0.25); }
+    .thumb-container {
+      width: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      background: #111;
+    }
+    @media (max-width: 767px) {
+      .card img { max-height: 250px; }
+    }
+    .card-info {
+      padding: 12px;
+      text-align: center;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .card h3 {
+      font-size: 1rem;
+      margin: 0 0 6px;
+      height: 2.4em;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .meta { font-size: 0.8rem; color: #aaa; }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin: 1.5rem 0;
+      flex-wrap: wrap;
+    }
+    .pagination button {
+      background: #333;
+      padding: 10px 18px;
+    }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .page-info { font-weight: bold; color: var(--accent); }
+    .back-btn {
+      color: var(--accent);
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 1rem 0;
+    }
+    #video-section { display:none; background:#000; padding:20px 10px; text-align:center; }
+    #video-player {
+      width:100%;
+      max-width:980px;
+      margin:0 auto 1rem;
+      border-radius:8px;
+      box-shadow:0 10px 40px rgba(0,0,0,0.7);
+    }
+    .extract-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin: 1.5rem auto;
+      display: block;
+      width: 90%;
+      max-width: 420px;
+    }
+    .status {
+      margin: 1rem auto;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 500;
+      max-width: 600px;
+    }
+    .success { background: rgba(76,175,80,0.25); color: #c8e6c9; }
+    .error   { background: rgba(244,67,54,0.25); color: #ffcdd2; }
+    .info    { background: rgba(33,150,243,0.25); color: #bbdefb; }
+    #loading {
+      text-align: center;
+      padding: 4rem 1rem;
+      font-size: 1.3rem;
+      color: #888;
+    }
+    .spinner {
+      border: 6px solid #333;
+      border-top: 6px solid var(--accent);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin: 1.5rem auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>MilfNut Taboo Direct</h1>
+</header>
+
+<div class="container" id="home">
+  <h2 style="text-align:center; margin:2rem 0 1rem; color:var(--accent);">Select Category</h2>
+  <div class="grid">
+    <div class="card" data-cat="627" data-name="Brother Sister">
+      <div class="thumb-container"><img src="https://milfnut.com/wp-content/uploads/2026/03/MiniLilly-Pettie-Blonde-Gets-Pounded-After-Blows-Stepbros-Cock.png" alt=""></div>
+      <div class="card-info">
+        <h3>Brother Sister</h3>
+        <div class="meta">Latest</div>
+      </div>
+    </div>
+    <div class="card" data-cat="874" data-name="Dad Daughter">
+      <div class="thumb-container"><img src="https://milfnut.com/wp-content/uploads/2026/03/Sofie-Reyez-Shes-a-Filthy-Little-Sex-Demon.-Goth-Tomboy-Is-Daddys-New-Fucktoy.png" alt=""></div>
+      <div class="card-info">
+        <h3>Dad Daughter</h3>
+        <div class="meta">Latest</div>
+      </div>
+    </div>
+    <div class="card" data-cat="131" data-name="Mom Son">
+      <div class="thumb-container"><img src="https://milfnut.com/wp-content/uploads/2026/03/La-Paisita-Falls-Into-Temptation-Again-And-Fucks-Her-Perverted-Stepson.png" alt=""></div>
+      <div class="card-info">
+        <h3>Mom Son</h3>
+        <div class="meta">Latest</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container" id="category-page" style="display:none;">
+  <a href="#" class="back-btn" onclick="goBack()">← Back</a>
+  <h2 id="category-title" style="color:var(--accent); margin:0.5rem 0 1rem;"></h2>
+
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search titles..." />
+    <button onclick="filterPosts()">Go</button>
+  </div>
+
+  <div id="loading" style="display:none;"><div class="spinner"></div>Loading...</div>
+  <div class="grid" id="posts-grid"></div>
+
+  <div class="pagination" id="pagination"></div>
+
+  <div class="search-bar" style="justify-content:center;">
+    <input type="text" id="search-bottom" placeholder="Search titles..." />
+    <button onclick="filterPosts()">Go</button>
+  </div>
+</div>
+
+<div class="container" id="video-section">
+  <a href="#" class="back-btn" onclick="goBack()">← Back</a>
+  <h2 id="video-title" style="margin:0.5rem 0 1.5rem;"></h2>
+
+  <video id="video-player" controls playsinline poster=""></video>
+
+  <button class="extract-btn" onclick="extractAndPlay()">Extract & Stream (.m3u8)</button>
+
+  <div id="extract-status" class="status" style="display:none;"></div>
+</div>
+
+<script>
+const PROXY = "https://allinone.godess.workers.dev/?url=";
+const video = document.getElementById("video-player");
+let hls = null;
+
+let currentState = {
+  page: 'home',
+  catId: null,
+  catName: '',
+  posts: [],
+  pageNum: 1,
+  totalPages: 1,
+  search: ''
+};
+
+let historyStack = [currentState];
+
+const PER_PAGE = 24;
+
+function saveState() {
+  historyStack.push({ ...currentState });
+  history.pushState(currentState, '', '');
+}
+
+function loadState(state) {
+  currentState = state;
+  if (state.page === 'home') {
+    document.getElementById('home').style.display = 'block';
+    document.getElementById('category-page').style.display = 'none';
+    document.getElementById('video-section').style.display = 'none';
+  } else if (state.page === 'category') {
+    document.getElementById('category-page').style.display = 'block';
+    document.getElementById('home').style.display = 'none';
+    document.getElementById('video-section').style.display = 'none';
+    document.getElementById('category-title').textContent = state.catName;
+    renderPosts(state.posts, state.pageNum, state.totalPages);
+    document.getElementById('search-input').value = state.search;
+    document.getElementById('search-bottom').value = state.search;
+  } else if (state.page === 'video') {
+    document.getElementById('video-section').style.display = 'block';
+    document.getElementById('home').style.display = 'none';
+    document.getElementById('category-page').style.display = 'none';
+    document.getElementById('video-title').textContent = state.title;
+    video.poster = state.poster;
+    destroyHls();
+    document.getElementById('extract-status').style.display = 'none';
+  }
+}
+
+function goBack() {
+  if (historyStack.length > 1) {
+    historyStack.pop();
+    loadState(historyStack[historyStack.length - 1]);
+  }
+}
+
+window.addEventListener('popstate', () => {
+  if (historyStack.length > 1) {
+    historyStack.pop();
+    loadState(historyStack[historyStack.length - 1]);
+  }
+});
+
+function destroyHls() {
+  if (hls) {
+    hls.destroy();
+    hls = null;
+  }
+  video.src = '';
+  video.poster = '';
+}
+
+async function fetchProxy(url) {
+  const res = await fetch(PROXY + encodeURIComponent(url));
+  if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
+  return res;
+}
+
+async function loadCategory(catId, catName, pageNum = 1, search = '') {
+  currentState = {
+    page: 'category',
+    catId,
+    catName,
+    posts: [],
+    pageNum,
+    totalPages: 1,
+    search
+  };
+  saveState();
+
+  document.getElementById('category-page').style.display = 'block';
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('video-section').style.display = 'none';
+  document.getElementById('category-title').textContent = catName;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('posts-grid').innerHTML = '';
+  document.getElementById('pagination').innerHTML = '';
+
+  try {
+    let url = `https://milfnut.com/wp-json/wp/v2/posts?categories=${catId}&per_page=${PER_PAGE}&page=${pageNum}&orderby=date&order=desc&_embed`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const res = await fetchProxy(url);
+    const posts = await res.json();
+
+    let totalPages = parseInt(res.headers.get('x-wp-totalpages') || '1', 10);
+
+    currentState.posts = posts;
+    currentState.totalPages = totalPages;
+
+    document.getElementById('loading').style.display = 'none';
+    renderPosts(posts, pageNum, totalPages);
+
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('posts-grid').innerHTML = `<p style="color:#f66;text-align:center;">Error: ${e.message}</p>`;
+  }
+}
+
+function renderPosts(posts, pageNum, totalPages) {
+  const grid = document.getElementById('posts-grid');
+  grid.innerHTML = posts.length ? '' : '<p style="grid-column:1/-1;text-align:center;color:#aaa;">No posts found</p>';
+
+  posts.forEach(p => {
+    const thumb = p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || 'https://via.placeholder.com/300x180/222/eee?text=No+Thumb';
+    const date = new Date(p.date).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="thumb-container">
+        <img src="${thumb}" alt="${p.title.rendered}">
+      </div>
+      <div class="card-info">
+        <h3>${p.title.rendered}</h3>
+        <div class="meta">${date}</div>
+      </div>`;
+    card.onclick = () => openVideo(p.link, p.title.rendered, thumb);
+    grid.appendChild(card);
+  });
+
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = `
+    <button ${pageNum <= 1 ? 'disabled' : ''} onclick="loadCategory(${currentState.catId}, '${currentState.catName.replace(/'/g,"\\'")}', ${pageNum-1}, '${currentState.search.replace(/'/g,"\\'")}')">Previous</button>
+    <span class="page-info">Page ${pageNum} / ${totalPages}</span>
+    <button ${pageNum >= totalPages ? 'disabled' : ''} onclick="loadCategory(${currentState.catId}, '${currentState.catName.replace(/'/g,"\\'")}', ${pageNum+1}, '${currentState.search.replace(/'/g,"\\'")}')">Next</button>
+  `;
+}
+
+function filterPosts() {
+  const term = (document.getElementById('search-input').value || document.getElementById('search-bottom').value || '').trim();
+  currentState.search = term;
+  currentState.pageNum = 1;
+  loadCategory(currentState.catId, currentState.catName, 1, term);
+}
+
+function openVideo(link, title, poster) {
+  currentState = {
+    page: 'video',
+    title,
+    poster,
+    link
+  };
+  saveState();
+
+  document.getElementById('video-section').style.display = 'block';
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('category-page').style.display = 'none';
+  document.getElementById('video-title').textContent = title;
+  video.poster = poster;
+  destroyHls();
+  document.getElementById('extract-status').style.display = 'none';
+}
+
+async function extractAndPlay() {
+  const status = document.getElementById('extract-status');
+  status.className = 'status info';
+  status.textContent = 'Fetching page → searching .m3u8...';
+  status.style.display = 'block';
+
+  try {
+    const res = await fetchProxy(currentState.link);
+    const html = await res.text();
+
+    let m3u8 = null;
+    let m = html.match(/<meta\s+itemprop=["']contentURL["']\s+content=["']([^"']*\.m3u8)["']/i);
+    if (m) m3u8 = m[1];
+    if (!m3u8) {
+      m = html.match(/src=["']([^"']*\.m3u8)["']/i);
+      if (m) m3u8 = m[1];
+    }
+    if (!m3u8) {
+      m = html.match(/(https?:\/\/[^\s"']+\.m3u8)/i);
+      if (m) m3u8 = m[1];
+    }
+
+    if (m3u8) {
+      status.className = 'status success';
+      status.textContent = `Found → Streaming: ${m3u8.split('/').pop()}`;
+
+      const proxied = PROXY + encodeURIComponent(m3u8);
+
+      if (Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(proxied);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => {});
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = proxied;
+        video.play().catch(() => {});
+      } else {
+        throw new Error('No HLS support in this browser');
+      }
+    } else {
+      status.className = 'status error';
+      status.innerHTML = 'No .m3u8 found.<br>Video may be protected or in iframe.';
+    }
+  } catch (e) {
+    status.className = 'status error';
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+// Initialize category cards
+document.querySelectorAll('#home .card').forEach(card => {
+  card.addEventListener('click', () => {
+    const catId = card.dataset.cat;
+    const catName = card.dataset.name;
+    loadCategory(catId, catName);
+  });
+});
+
+// Sync search inputs
+document.getElementById('search-input').addEventListener('input', e => {
+  document.getElementById('search-bottom').value = e.target.value;
+});
+document.getElementById('search-bottom').addEventListener('input', e => {
+  document.getElementById('search-input').value = e.target.value;
+});
+</script>
+</body>
+</html>
