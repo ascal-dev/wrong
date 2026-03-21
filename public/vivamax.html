@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VivaMax Simple Streaming</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body { margin:0; font-family:system-ui; background:#0b0b0b; color:#fff; }
+
+    .topbar {
+      position:sticky; top:0; background:#121212;
+      padding:10px; display:flex; flex-wrap:wrap; gap:8px;
+      justify-content:center; z-index:1000;
+    }
+
+    input, button { padding:8px; border:none; border-radius:6px; }
+    button { background:#1f1f1f; color:#fff; cursor:pointer; }
+    button:disabled { opacity:0.4; }
+
+    .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:10px; }
+    @media(min-width:600px){ .grid{grid-template-columns:repeat(3,1fr);} }
+    @media(min-width:900px){ .grid{grid-template-columns:repeat(4,1fr);} }
+
+    .card { background:#161616; border-radius:10px; cursor:pointer; transition:.2s; }
+    .card:hover { transform:scale(1.03); }
+    .card img { width:100%; height:auto; border-radius:10px; }
+
+    .meta { padding:8px; }
+    .title { font-size:14px; }
+    .date { font-size:12px; color:#aaa; }
+
+    .post-page { max-width:900px; margin:auto; padding:10px; }
+
+    .post-thumb img { width:100%; border-radius:10px; margin-bottom:10px; }
+
+    .player-box {
+      margin-top:15px;
+      background:#000;
+      border-radius:8px;
+      overflow:hidden;
+      width:100%;
+      max-width:100%;
+    }
+
+    video {
+      width:100%;
+      height:auto;
+      display:block;
+    }
+
+    .server-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+
+    .loader { text-align:center; padding:40px; }
+    .spinner {
+      width:30px; height:30px;
+      border:4px solid #333;
+      border-top:4px solid #fff;
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+      margin:auto;
+    }
+
+    @keyframes spin { 100%{ transform:rotate(360deg);} }
+
+    .info { text-align:center; color:#aaa; padding:5px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <button onclick="goBack()">⬅</button>
+  <button onclick="goForward()">➡</button>
+
+  <input id="search" placeholder="Search..." oninput="liveSearch()">
+
+  <button id="prevBtn" onclick="prevPage()">Prev</button>
+  <button id="nextBtn" onclick="nextPage()">Next</button>
+
+  <input id="pageInput" type="number" placeholder="Page">
+  <button onclick="goToPage()">Go</button>
+</div>
+
+<div class="info" id="pageInfo"></div>
+<div id="app"></div>
+
+<script>
+const API = "https://vivamaxflix.com/wp-json/wp/v2/posts?_embed";
+const PROXY = "https://vivamax.godess.workers.dev/?url=";
+
+let currentPage = 1;
+let totalPages = 1;
+let searchQuery = "";
+const perPage = 24;
+let currentPlayer = null;
+
+// LOADER
+function showLoader(){
+  document.getElementById("app").innerHTML = `
+    <div class="loader">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>`;
+}
+
+// ROUTER
+function router(){
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  if(id) loadPost(id);
+  else initList();
+}
+
+// LIST
+function initList(){
+  const params = new URLSearchParams(location.search);
+  currentPage = parseInt(params.get("page")) || 1;
+  searchQuery = params.get("search") || "";
+  document.getElementById("search").value = searchQuery;
+  loadPosts();
+}
+
+function loadPosts(){
+  showLoader();
+
+  let url = `${API}&per_page=${perPage}&page=${currentPage}`;
+  if(searchQuery) url += `&search=${searchQuery}`;
+
+  fetch(url)
+    .then(res=>{
+      totalPages = parseInt(res.headers.get("X-WP-TotalPages")) || 1;
+      return res.json();
+    })
+    .then(posts=>{
+      if(!posts.length){
+        document.getElementById("app").innerHTML = "<p class='info'>No results</p>";
+        return;
+      }
+
+      let html = "<div class='grid'>";
+      posts.forEach(post=>{
+        let img = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+        let date = new Date(post.date).toLocaleString();
+
+        html += `
+          <div class="card" onclick="openPost(${post.id})">
+            <img src="${img}">
+            <div class="meta">
+              <div class="title">${post.title.rendered}</div>
+              <div class="date">${date}</div>
+            </div>
+          </div>
+        `;
+      });
+
+      html += "</div>";
+      document.getElementById("app").innerHTML = html;
+
+      updateControls();
+      updateHistory();
+      scrollTop();
+    });
+}
+
+// CONTROLS
+function updateControls(){
+  document.getElementById("prevBtn").disabled = currentPage<=1;
+  document.getElementById("nextBtn").disabled = currentPage>=totalPages;
+  document.getElementById("pageInfo").innerText =
+    `Page ${currentPage} / ${totalPages}`;
+}
+
+// SEARCH
+function liveSearch(){
+  searchQuery = document.getElementById("search").value;
+  currentPage = 1;
+  loadPosts();
+}
+
+// PAGINATION
+function nextPage(){ if(currentPage<totalPages){currentPage++;loadPosts();}}
+function prevPage(){ if(currentPage>1){currentPage--;loadPosts();}}
+
+function goToPage(){
+  let p = parseInt(document.getElementById("pageInput").value);
+  if(p>=1 && p<=totalPages){
+    currentPage = p;
+    loadPosts();
+  }
+}
+
+// POST
+function openPost(id){
+  history.pushState({id},"",`?id=${id}`);
+  loadPost(id);
+}
+
+function loadPost(id){
+  showLoader();
+
+  fetch(`${API}&include=${id}&_embed`)
+    .then(res => res.json())
+    .then(data => {
+      let post = data[0];
+
+      let thumb = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+      let content = post.content.rendered;
+
+      // Remove embedded video tags
+      content = content.replace(/<video[\s\S]*?<\/video>/gi, "");
+
+      // Extract MP4 links
+      let matches = [];
+
+      // (1) <video src="">
+      let videoTags = post.content.rendered.match(/<video[\s\S]*?src=["']([^"']+)["']/gi);
+      if(videoTags){
+        videoTags.forEach(tag => {
+          let u = tag.match(/src=["']([^"']+)["']/i);
+          if(u && u[1]) matches.push(u[1]);
+        });
+      }
+
+      // (2) <source src="">
+      let sourceTags = post.content.rendered.match(/<source[\s\S]*?src=["']([^"']+)["']/gi);
+      if(sourceTags){
+        sourceTags.forEach(tag => {
+          let u = tag.match(/src=["']([^"']+)["']/i);
+          if(u && u[1]) matches.push(u[1]);
+        });
+      }
+
+      // (3) Any plain .mp4 URLs
+      let allMP4 = post.content.rendered.match(/https?:\/\/[^"' >]+\.mp4/gi);
+      if(allMP4) matches.push(...allMP4);
+
+      // Remove duplicates
+      matches = [...new Set(matches)];
+
+      // Build server buttons
+      let servers = "";
+      if(matches.length){
+        matches.forEach((url,i)=>{
+          servers += `<button onclick="playVideo('${url}')">Server ${i+1}</button>`;
+        });
+      } else servers = "<p>No video found</p>";
+
+      // Render sub post page
+      document.getElementById("app").innerHTML = `
+        <div class="post-page">
+          <button onclick="goBack()">⬅ Back</button>
+
+          <h2>${post.title.rendered}</h2>
+          <p>${new Date(post.date).toLocaleString()}</p>
+
+          ${thumb ? `<div class="post-thumb"><img src="${thumb}" alt="Thumbnail"></div>` : ""}
+          <div>${content}</div>
+
+          <div class="server-btns">${servers}</div>
+
+          <div id="player" class="player-box"></div>
+        </div>
+      `;
+    });
+}
+
+// HTML5 PLAYER
+function playVideo(url){
+  const proxied = PROXY + url;
+  const playerBox = document.getElementById("player");
+  playerBox.innerHTML = "";
+
+  const video = document.createElement("video");
+  video.src = proxied;
+  video.controls = true;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.preload = "auto";
+
+  playerBox.appendChild(video);
+  currentPlayer = video;
+}
+
+// HISTORY
+function updateHistory(){
+  const url=`?page=${currentPage}&search=${searchQuery}`;
+  history.pushState({}, "", url);
+}
+
+function goBack(){ history.back(); }
+function goForward(){ history.forward(); }
+
+window.onpopstate = router;
+
+// UTIL
+function scrollTop(){
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+// INIT
+router();
+</script>
+
+</body>
+</html>
