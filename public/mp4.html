@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Stream Player</title>
+    <style>
+        /* CSS: Styles the player and page */
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .main-wrapper {
+            width: 90%;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        .video-container {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .status-msg {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            min-height: 20px;
+        }
+
+        .error { color: #ff5f56; }
+        .loading { color: #ffbd2e; }
+        .success { color: #27c93f; }
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <h2>Now Streaming</h2>
+        
+        <div class="video-container">
+            <video id="videoPlayer" controls autoplay>
+                <source src="https://www.mp4moviez.date/dl.php?id=54494&q=360&jio=yes&title=(18%EF%BC%8B)-Zung-The-Rust-(2026)-S01-Hindi-HGM-Complete-Web-Series" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <div id="status" class="status-msg loading">Attempting to load stream...</div>
+    </div>
+
+    <script>
+        // JS: Monitors the video state
+        const v = document.getElementById('videoPlayer');
+        const s = document.getElementById('status');
+
+        v.addEventListener('playing', () => {
+            s.textContent = "Stream active";
+            s.className = "status-msg success";
+        });
+
+        v.addEventListener('error', () => {
+            s.textContent = "Error: The link may have expired or the server is blocking the request.";
+            s.className = "status-msg error";
+        });
+
+        v.addEventListener('waiting', () => {
+            s.textContent = "Buffering...";
+            s.className = "status-msg loading";
+        });
+    </script>
+
+</body>
+</html>
