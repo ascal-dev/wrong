@@ -2,512 +2,432 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Desimms Browser</title>
-
+<title>DesiMMS Browser • v8 MODERN</title>
 <style>
+    :root {
+        --accent: #ff2d95;
+        --accent-dark: #c81e6c;
+        --bg: #0a0a0f;
+        --card: #1a1a24;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        background: var(--bg);
+        color: #eee;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #0a0a0f 0%, #1a001f 100%);
+    }
+    header {
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(12px);
+        padding: 14px 20px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .logo {
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: -1.5px;
+        color: var(--accent);
+        text-shadow: 0 0 15px rgba(255, 45, 149, 0.5);
+    }
+    button {
+        padding: 11px 20px;
+        background: #222;
+        color: #fff;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.25s ease;
+    }
+    button:hover {
+        background: var(--accent);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(255, 45, 149, 0.4);
+    }
+    input {
+        padding: 12px 18px;
+        background: #222;
+        border: none;
+        border-radius: 50px;
+        color: #fff;
+        outline: none;
+        font-size: 15px;
+    }
+    #searchBox { width: 260px; }
 
-body{
-margin:0;
-font-family:Arial;
-background:#111;
-color:white;
-}
+    #categories, #posts {
+        max-width: 1400px;
+        margin: 20px auto;
+    }
 
-header{
-background:#000;
-padding:10px;
-position:sticky;
-top:0;
-z-index:10;
-}
+    #categories {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 2fr));
+        gap: 16px;
+    }
+    .cat-card {
+        background: var(--card);
+        border-radius: 18px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    }
+    .cat-card:hover {
+        transform: translateY(-8px) scale(1.03);
+        box-shadow: 0 15px 35px rgba(255, 45, 149, 0.25);
+    }
+    .cat-card img {
+        width: 100%;
+        height: 110px;
+        object-fit: contain;
+        background: #111;
+    }
+    .cat-card span {
+        display: block;
+        padding: 14px 12px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 15.5px;
+    }
 
-button{
-padding:8px 12px;
-margin:3px;
-cursor:pointer;
-}
+    #posts {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);   /* Exactly 2 posts per row */
+        gap: 22px;
+    }
+    @media (max-width: 200px) {
+        #posts { grid-template-columns: 2fr; };
+        ##categories { grid-template-columns: 2fr; };
+    }
+    .post {
+        background: var(--card);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .post:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px rgba(255, 45, 149, 0.3);
+    }
+    .post img {
+        width: 100%;
+        height: 110px;
+        object-fit: contain;
+        background: #111;
+        transition: transform 0.4s ease;
+    }
+    .post:hover img {
+        transform: scale(1.05);
+    }
+    .post .title {
+        padding: 16px 18px;
+        font-size: 16px;
+        line-height: 1.4;
+        font-weight: 600;
+        color: #ddd;
+    }
 
-input{
-padding:8px;
-}
-
-#categories{
-padding:10px;
-}
-
-#posts{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-padding:10px;
-}
-
-.post{
-background:#222;
-padding:8px;
-border-radius:6px;
-cursor:pointer;
-}
-
-.post img{
-width:100%;
-height:auto;
-}
-
-.post h3{
-font-size:15px;
-margin:5px 0;
-}
-
-#postView{
-display:none;
-padding:15px;
-}
-
-#postView img{
-width:100%;
-}
-
-#videoResult{
-margin-top:10px;
-background:#000;
-padding:10px;
-word-break:break-all;
-}
-
+    #postView {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(8, 8, 15, 0.97);
+        z-index: 1000;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    .modal-content {
+        max-width: 1100px;
+        margin: 0 auto;
+        background: var(--card);
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+    }
+    .modal-header {
+        padding: 16px 24px;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    #postImage {
+        width: 100%;
+        max-height: 460px;
+        object-fit: contain;
+        background: #000;
+    }
+    .video-container {
+        padding: 25px;
+        background: #000;
+    }
+    #videoResult video {
+        border-radius: 14px;
+        box-shadow: 0 15px 40px rgba(255, 45, 149, 0.25);
+        width: 100%;
+        max-height: 640px;
+    }
+    .loading {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--accent);
+        font-size: 19px;
+        animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
 </style>
 </head>
-
 <body>
 
 <header>
-
-<button id="latestBtn">Latest</button>
-<button id="catBtn">Categories</button>
-
-<input id="searchBox" placeholder="Search posts">
-<button id="searchBtn">Search</button>
-
-<br>
-
-<button id="prevBtn">Previous</button>
-<input id="pageInput" type="number" value="1" style="width:60px">
-<button id="goBtn">Go</button>
-<button id="nextBtn">Next</button>
-
+    <div class="logo">DesiMMS</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button id="latestBtn">🏠 Latest</button>
+        <button id="catBtn">📂 Categories</button>
+        
+        <input id="searchBox" placeholder="🔎 Search videos...">
+        <button id="searchBtn">Search</button>
+        
+        <button id="prevBtn">← Prev</button>
+        <input id="pageInput" type="number" value="1" style="width:78px;text-align:center">
+        <button id="goBtn">GO</button>
+        <button id="nextBtn">Next →</button>
+    </div>
 </header>
 
 <div id="categories"></div>
-
 <div id="posts"></div>
 
 <div id="postView">
-
-<button onclick="closePost()">Back</button>
-
-<h2 id="postTitle"></h2>
-
-<img id="postImage">
-
-<br><br>
-
-<button id="extractBtn">Extract Stream</button>
-<button id="smartExtractBtn">Smart Extract</button>
-
-<div id="videoResult"></div>
-
+    <div class="modal-content">
+        <div class="modal-header">
+            <button onclick="closePost()" style="background:#333;padding:9px 20px;border-radius:50px">← Back</button>
+            <h2 id="postTitle" style="margin:0;font-size:19px;max-width:68%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></h2>
+            <div style="color:var(--accent);font-weight:700">v8 MODERN</div>
+        </div>
+        
+        <img id="postImage">
+        
+        <div style="padding:22px;background:#111;display:flex;gap:14px;flex-wrap:wrap">
+            <button id="extractBtn" style="background:var(--accent);color:#000;font-size:17px;padding:14px 30px">⚡ Extract via Proxy</button>
+            <button id="smartExtractBtn" style="background:#222;font-size:17px;padding:14px 30px">🧠 Smart Scan</button>
+        </div>
+        
+        <div id="videoResult" class="video-container"></div>
+    </div>
 </div>
 
 <script>
+// ==================== CONFIG ====================
+const API = "https://www.desimms.com.co/wp-json/wp/v2";
+const PROXY = "https://allinone.godess.workers.dev/?url=";
 
-const API="https://www.desimms.com.co/wp-json/wp/v2"
-const PROXY="https://allinone.godess.workers.dev/?url="
+let currentPage = 1;
+let currentCategory = null;
+let currentSearch = "";
 
-let currentPage=1
-let currentCategory=null
-let currentSearch=""
+// ==================== PROXY STREAM EXTRACTOR ====================
+async function extractVideo(postUrl) {
+    const resultBox = document.getElementById("videoResult");
+    resultBox.innerHTML = `<div class="loading">🔍 Finding video...</div>`;
 
-async function loadPosts(){
+    try {
+        const res = await fetch(PROXY + encodeURIComponent(postUrl));
+        const html = await res.text();
 
-document.getElementById("postView").style.display="none"
+        let playerUrl = null;
+        const iframeMatch = html.match(/src=["']([^"']*player-x\.php\?q=[^"']+)["']/i);
+        if (iframeMatch) playerUrl = iframeMatch[1];
 
-let url=`${API}/posts?_embed&page=${currentPage}`
+        if (playerUrl) {
+            const playerRes = await fetch(PROXY + encodeURIComponent(playerUrl));
+            const playerHtml = await playerRes.text();
 
-if(currentCategory)
-url+=`&categories=${currentCategory}`
+            const mp4Match = playerHtml.match(/https:\/\/cdn\.desimms\.com\.co\/[^"'\s<>`|{}()[\]\\]+?\.mp4/i);
+            if (mp4Match) {
+                const proxiedUrl = PROXY + encodeURIComponent(mp4Match[0]);
+                resultBox.innerHTML = `
+                    <b style="color:#0f0">✅ PROXY STREAM READY</b><br><br>
+                    <video controls autoplay width="100%" style="max-height:640px">
+                        <source src="${proxiedUrl}" type="video/mp4">
+                    </video>
+                `;
+                return;
+            }
+        }
 
-if(currentSearch)
-url+=`&search=${currentSearch}`
-
-let res=await fetch(url)
-let data=await res.json()
-
-renderPosts(data)
-
+        // Aggressive fallback
+        const ultra = html.match(/https?:\/\/cdn\.desimms\.com\.co\/[^"'\s<>`|{}()[\]\\]+?\.mp4/gi);
+        if (ultra && ultra.length > 0) {
+            const proxiedUrl = PROXY + encodeURIComponent(ultra[0]);
+            resultBox.innerHTML = `
+                <b style="color:#0f0">✅ PROXY STREAM (Aggressive)</b><br><br>
+                <video controls autoplay width="100%" style="max-height:640px">
+                    <source src="${proxiedUrl}" type="video/mp4">
+                </video>
+            `;
+        } else {
+            resultBox.innerHTML = `❌ Could not find MP4.<br><button onclick="smartExtract('${postUrl}')" style="background:var(--accent);color:#000;padding:12px 26px">Try Smart Scan</button>`;
+        }
+    } catch (e) {
+        resultBox.innerHTML = "Extraction failed.";
+    }
 }
 
-function renderPosts(posts){
-
-let container=document.getElementById("posts")
-container.innerHTML=""
-
-posts.forEach(p=>{
-
-let img=""
-
-if(p._embedded && p._embedded["wp:featuredmedia"])
-img=p._embedded["wp:featuredmedia"][0].source_url
-
-let div=document.createElement("div")
-div.className="post"
-
-div.innerHTML=`
-<img src="${img}">
-<h3>${p.title.rendered}</h3>
-`
-
-div.onclick=()=>openPost(p,img)
-
-container.appendChild(div)
-
-})
-
+async function smartExtract(url) {
+    const resultBox = document.getElementById("videoResult");
+    resultBox.innerHTML = `<div class="loading">Smart scan running...</div>`;
+    resultBox.innerHTML = "Smart scan feature coming soon...";
 }
 
-function openPost(post,img){
+// ==================== LOAD POSTS (2 per row) ====================
+async function loadPosts() {
+    document.getElementById("postView").style.display = "none";
+    document.getElementById("categories").style.display = "none";
+    document.getElementById("posts").style.display = "grid";
 
-document.getElementById("posts").innerHTML=""
-document.getElementById("categories").innerHTML=""
+    const container = document.getElementById("posts");
+    container.innerHTML = `<div class="loading">Loading latest videos... 🔥</div>`;
 
-document.getElementById("postView").style.display="block"
+    let url = `${API}/posts?_embed&page=${currentPage}&per_page=10`;
+    if (currentCategory) url += `&categories=${currentCategory}`;
+    if (currentSearch) url += `&search=${encodeURIComponent(currentSearch)}`;
 
-document.getElementById("postTitle").innerHTML=post.title.rendered
-document.getElementById("postImage").src=img
-
-document.getElementById("extractBtn").onclick=()=>extractVideo(post.link)
-document.getElementById("smartExtractBtn").onclick=()=>smartExtract(post.link)
-
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        renderPosts(data);
+    } catch (e) {
+        container.innerHTML = `<div style="text-align:center;padding:80px;color:#ff2d95">Failed to load posts</div>`;
+    }
 }
 
-function closePost(){
-
-document.getElementById("postView").style.display="none"
-loadPosts()
-
+function renderPosts(posts) {
+    const container = document.getElementById("posts");
+    container.innerHTML = "";
+    if (posts.length === 0) {
+        container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:120px;font-size:18px">No results found</div>`;
+        return;
+    }
+    posts.forEach(p => {
+        let img = p._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+        const div = document.createElement("div");
+        div.className = "post";
+        div.innerHTML = `
+            <img src="${img}" alt="${p.title.rendered}">
+            <div class="title">${p.title.rendered}</div>
+        `;
+        div.onclick = () => openPost(p, img);
+        container.appendChild(div);
+    });
 }
 
-/* BASIC MP4 EXTRACTOR */
+function openPost(post, img) {
+    document.getElementById("postView").style.display = "block";
+    document.getElementById("postTitle").innerHTML = post.title.rendered;
+    document.getElementById("postImage").src = img || "";
 
-async function extractVideo(url){
-
-let resultBox=document.getElementById("videoResult")
-
-resultBox.innerHTML="Extracting..."
-
-try{
-
-let res=await fetch(PROXY+encodeURIComponent(url))
-let html=await res.text()
-
-let mp4=html.match(/https:\/\/cdn\.desimms\.com\.co\/[^"' ]+\.mp4/i)
-
-if(mp4){
-
-resultBox.innerHTML=`
-<b>Desimms CDN Stream</b><br><br>
-<video controls width="100%">
-<source src="${mp4[0]}">
-</video>
-`
-return
+    document.getElementById("extractBtn").onclick = () => extractVideo(post.link);
+    document.getElementById("smartExtractBtn").onclick = () => smartExtract(post.link);
 }
 
-resultBox.innerHTML="No CDN stream found"
-
-}catch(e){
-
-resultBox.innerHTML="Extraction failed"
-
+function closePost() {
+    document.getElementById("postView").style.display = "none";
+    loadPosts();
 }
 
+// ==================== CATEGORIES ====================
+async function loadCategories() {
+    document.getElementById("posts").style.display = "none";
+    document.getElementById("postView").style.display = "none";
+    document.getElementById("categories").style.display = "grid";
+
+    const container = document.getElementById("categories");
+    container.innerHTML = `<div class="loading">Loading categories...</div>`;
+
+    try {
+        const catRes = await fetch(`${API}/categories`);
+        const cats = await catRes.json();
+        container.innerHTML = "";
+
+        const allCard = document.createElement("div");
+        allCard.className = "cat-card";
+        allCard.innerHTML = `<img src="https://www.desimms.com.co/wp-content/uploads/2026/03/Hot-Professional-Randi-Bj-Cock-before-Fucking-Mms-Viral-Videos.jpg"><span>All Videos</span>`;
+        allCard.onclick = resetCategory;
+        container.appendChild(allCard);
+
+        for (let cat of cats) {
+            const postRes = await fetch(`${API}/posts?_embed&categories=${cat.id}&per_page=1`);
+            const posts = await postRes.json();
+            const thumb = posts.length > 0 && posts[0]._embedded?.["wp:featuredmedia"]?.[0]?.source_url 
+                        ? posts[0]._embedded["wp:featuredmedia"][0].source_url 
+                        : "https://picsum.photos/300/200";
+
+            const card = document.createElement("div");
+            card.className = "cat-card";
+            card.innerHTML = `
+                <img src="${thumb}" alt="${cat.name}">
+                <span>${cat.name}</span>
+            `;
+            card.onclick = () => {
+                currentCategory = cat.id;
+                currentPage = 1;
+                document.getElementById("pageInput").value = 1;
+                loadPosts();
+            };
+            container.appendChild(card);
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="text-align:center;padding:60px;color:#ff2d95">Failed to load categories</div>`;
+    }
 }
 
-/* SMART SCANNER */
-
-async function smartExtract(url){
-
-let resultBox=document.getElementById("videoResult")
-
-resultBox.innerHTML="Scanning for streams..."
-
-let res=await fetch(PROXY+encodeURIComponent(url))
-let html=await res.text()
-
-let links=[]
-
-/* DESIMMS CDN */
-
-let cdn=html.match(/https:\/\/cdn\.desimms\.com\.co\/[^"' ]+\.mp4/g)
-
-if(cdn){
-cdn.forEach(l=>links.push({type:"desimms",url:l}))
+function resetCategory() {
+    currentCategory = null;
+    currentSearch = "";
+    currentPage = 1;
+    document.getElementById("pageInput").value = 1;
+    loadPosts();
 }
 
-/* VIDARA */
-
-let vidara=html.match(/https?:\/\/vidara\.to\/v\/[A-Za-z0-9]+/g)
-
-if(vidara){
-vidara.forEach(l=>links.push({type:"vidara",url:l}))
-}
-
-/* VIDNEST */
-
-let vidnest=html.match(/https?:\/\/vidnest[^"' ]+/g)
-
-if(vidnest){
-vidnest.forEach(l=>links.push({type:"vidnest",url:l}))
-}
-
-/* LULU */
-
-let lulu=html.match(/https?:\/\/lulu[^"' ]+/g)
-
-if(lulu){
-lulu.forEach(l=>links.push({type:"lulu",url:l}))
-}
-
-/* BOODSTREAM */
-
-let bood=html.match(/https?:\/\/share\.boodstream[^"' ]+/g)
-
-if(bood){
-bood.forEach(l=>links.push({type:"boodstream",url:l}))
-}
-
-/* MIRRORS */
-
-let mirror=html.match(/https?:\/\/(?:strcloud\.club|tapeadsenjoyer\.com|shavetape\.cash)\/v\/[^"' ]+/g)
-
-if(mirror){
-mirror.forEach(l=>links.push({type:"mirror",url:l}))
-}
-
-if(links.length===0){
-
-resultBox.innerHTML="No streams detected"
-return
-
-}
-
-let buttons="<h3>Available Streams</h3>"
-
-links.forEach(l=>{
-
-buttons+=`
-<button onclick="runExtractor('${l.type}','${l.url}')">
-${l.type.toUpperCase()}
-</button>
-`
-
-})
-
-resultBox.innerHTML=buttons
-
-}
-
-/* HOST EXTRACTORS */
-
-async function runExtractor(type,url){
-
-let resultBox=document.getElementById("videoResult")
-
-resultBox.innerHTML="Extracting stream..."
-
-try{
-
-/* DESIMMS */
-
-if(type==="desimms"){
-
-resultBox.innerHTML=`
-<video controls width="100%">
-<source src="${url}">
-</video>
-`
-return
-}
-
-/* VIDARA */
-
-if(type==="vidara"){
-
-let id=url.split("/v/")[1]
-
-let api=`https://vidara.so/api/stream?filecode=${id}`
-
-let res=await fetch(api)
-let data=await res.json()
-
-let stream=data.streaming_url
-
-resultBox.innerHTML=`
-
-<h3>${data.title}</h3>
-<img src="${data.thumbnail}" width="200"><br><br>
-
-<video controls width="100%">
-<source src="${stream}">
-</video>
-
-`
-return
-}
-
-/* MIRROR → STREAMTAPE */
-
-if(type==="mirror"){
-
-let id=url.split("/v/")[1].split("/")[0]
-
-let embed=`https://streamtape.com/e/${id}`
-
-resultBox.innerHTML=`
-
-<iframe
-src="${embed}"
-width="100%"
-height="400"
-frameborder="0"
-allowfullscreen>
-</iframe>
-
-`
-return
-}
-
-/* BOODSTREAM */
-
-if(type==="boodstream"){
-
-let page=await fetch(PROXY+encodeURIComponent(url))
-let html=await page.text()
-
-let mp4=html.match(/<video[^>]+src="([^"]+\.mp4)/)
-
-if(mp4){
-
-resultBox.innerHTML=`
-<video controls width="100%">
-<source src="${mp4[1]}">
-</video>
-`
-
-}
-
-return
-}
-
-/* VIDNEST + LULU */
-
-if(type==="vidnest" || type==="lulu"){
-
-let res=await fetch(PROXY+encodeURIComponent(url))
-let html=await res.text()
-
-let file=html.match(/file\s*:\s*"([^"]+)"/)
-
-if(file){
-
-let stream=file[1]
-
-if(stream.includes(".m3u8")){
-stream=PROXY+encodeURIComponent(stream)
-}
-
-resultBox.innerHTML=`
-<video controls width="100%">
-<source src="${stream}">
-</video>
-`
-
-}
-
-return
-}
-
-}catch(e){
-
-resultBox.innerHTML="Extraction failed"
-
-}
-
-}
-
-/* CATEGORY SYSTEM */
-
-async function loadCategories(){
-
-let res=await fetch(`${API}/categories`)
-let cats=await res.json()
-
-let div=document.getElementById("categories")
-div.innerHTML=""
-
-cats.forEach(c=>{
-
-let btn=document.createElement("button")
-btn.innerText=c.name
-
-btn.onclick=()=>{
-currentCategory=c.id
-currentPage=1
-loadPosts()
-}
-
-div.appendChild(btn)
-
-})
-
-}
-
-document.getElementById("latestBtn").onclick=()=>{
-currentCategory=null
-currentSearch=""
-currentPage=1
-loadPosts()
-}
-
-document.getElementById("catBtn").onclick=loadCategories
-
-document.getElementById("searchBtn").onclick=()=>{
-currentSearch=document.getElementById("searchBox").value
-currentPage=1
-loadPosts()
-}
-
-document.getElementById("nextBtn").onclick=()=>{
-currentPage++
-document.getElementById("pageInput").value=currentPage
-loadPosts()
-}
-
-document.getElementById("prevBtn").onclick=()=>{
-if(currentPage>1){
-currentPage--
-document.getElementById("pageInput").value=currentPage
-loadPosts()
-}
-}
-
-document.getElementById("goBtn").onclick=()=>{
-currentPage=parseInt(document.getElementById("pageInput").value)
-loadPosts()
-}
-
-loadPosts()
-
+// ==================== NAVIGATION ====================
+document.getElementById("latestBtn").onclick = () => {
+    currentCategory = null;
+    currentSearch = "";
+    currentPage = 1;
+    document.getElementById("pageInput").value = 1;
+    loadPosts();
+};
+
+document.getElementById("catBtn").onclick = loadCategories;
+
+document.getElementById("searchBtn").onclick = () => {
+    currentSearch = document.getElementById("searchBox").value.trim();
+    currentPage = 1;
+    document.getElementById("pageInput").value = 1;
+    loadPosts();
+};
+
+document.getElementById("nextBtn").onclick = () => { currentPage++; document.getElementById("pageInput").value = currentPage; loadPosts(); };
+document.getElementById("prevBtn").onclick = () => { if (currentPage > 1) { currentPage--; document.getElementById("pageInput").value = currentPage; loadPosts(); } };
+document.getElementById("goBtn").onclick = () => { currentPage = parseInt(document.getElementById("pageInput").value) || 1; loadPosts(); };
+
+// Start
+loadPosts();
 </script>
-
 </body>
 </html>
