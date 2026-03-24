@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PornChinese • Ultra Responsive Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        
+        .card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card:hover {
+            transform: translateY(-6px) scale(1.04);
+            box-shadow: 0 25px 50px -12px rgb(255 45 85 / 0.4);
+        }
+        
+        .thumb-container {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .thumb-container img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            background: #111;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen">
+
+<header class="bg-black border-b border-red-900 sticky top-0 z-50">
+    <div class="max-w-screen-2xl mx-auto px-6 py-5 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="text-4xl">🇨🇳</div>
+            <div>
+                <h1 class="text-3xl font-bold tracking-tighter">porn<span class="text-[#ff2d55]">chinese</span></h1>
+                <p class="text-xs text-zinc-500 -mt-1">FULLY RESPONSIVE • PAGINATED • DIRECT MP4</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-3 bg-zinc-900 rounded-3xl px-5 py-2 text-sm">
+                <span class="text-emerald-400 font-medium">Proxy:</span>
+                <input id="proxy-url" value="https://leakemms.godess.workers.dev/?url=" 
+                       class="bg-transparent border border-zinc-700 focus:border-red-500 w-96 px-4 py-1 rounded-2xl font-mono text-xs outline-none">
+            </div>
+            
+            <button onclick="refreshAll()" 
+                    class="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-8 py-3 rounded-3xl font-semibold text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15" />
+                </svg>
+                REFRESH ALL
+            </button>
+            
+            <button onclick="showHome()" 
+                    class="flex items-center gap-2 px-6 py-3 rounded-3xl font-medium text-zinc-400 hover:text-white border border-zinc-700 hover:border-red-500">
+                🏠 HOME
+            </button>
+        </div>
+    </div>
+</header>
+
+<div class="max-w-screen-2xl mx-auto px-6 py-8">
+
+    <div id="breadcrumb" class="flex items-center gap-3 mb-8 text-sm">
+        <span onclick="showHome()" class="cursor-pointer hover:text-red-400 flex items-center gap-1">HOME</span>
+        <span id="arrow" class="text-zinc-500">›</span>
+        <span id="current-cat" class="font-semibold text-red-400"></span>
+    </div>
+
+    <!-- CATEGORIES VIEW -->
+    <div id="home-view">
+        <h1 class="text-5xl font-bold tracking-tighter mb-10">Chinese &amp; Asian Porn Tubes</h1>
+        <div id="categories-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6"></div>
+    </div>
+
+    <!-- VIDEOS VIEW -->
+    <div id="videos-view" class="hidden">
+        <div class="flex justify-between items-baseline mb-8">
+            <h2 id="videos-title" class="text-3xl font-semibold"></h2>
+            <button onclick="showHome()" class="flex items-center gap-2 text-zinc-400 hover:text-white text-sm">
+                ← BACK TO CATEGORIES
+            </button>
+        </div>
+        
+        <div id="videos-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6"></div>
+        
+        <div id="pagination-bar" class="flex flex-wrap justify-center gap-2 mt-12"></div>
+    </div>
+</div>
+
+<!-- VIDEO MODAL -->
+<div id="modal" onclick="if(event.target===this)closeModal()" 
+     class="hidden fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4">
+    
+    <div class="w-full max-w-6xl bg-zinc-900 rounded-3xl overflow-hidden">
+        <div class="px-8 py-5 border-b border-zinc-800 flex justify-between items-center">
+            <div>
+                <h3 id="modal-title" class="font-semibold text-xl line-clamp-1"></h3>
+                <p id="modal-duration" class="text-zinc-400 text-sm"></p>
+            </div>
+            <button onclick="closeModal()" class="text-4xl leading-none text-zinc-400 hover:text-white">×</button>
+        </div>
+        
+        <div class="video-player-container aspect-video relative">
+            <div id="player-loading" class="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+                <div class="text-center">
+                    <div id="spinner" class="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p id="loading-text" class="text-red-400 font-medium">Extracting direct MP4...</p>
+                    <p id="attempt-text" class="text-xs text-zinc-500 mt-1">Attempt <span id="attempt-count">1</span>/3</p>
+                    
+                    <button id="retry-btn" 
+                            onclick="retryExtraction()"
+                            class="hidden mt-6 px-8 py-3 bg-zinc-800 hover:bg-red-600 rounded-3xl text-sm font-medium">
+                        🔄 Retry Extraction
+                    </button>
+                </div>
+            </div>
+            
+            <video id="main-player" 
+                   class="w-full h-full hidden"
+                   controls 
+                   autoplay 
+                   playsinline 
+                   controlsList="nodownload">
+            </video>
+        </div>
+        
+        <div class="px-8 py-4 bg-black text-xs font-mono flex items-center justify-between text-zinc-400">
+            <span id="mp4-link" class="break-all"></span>
+            <button onclick="copyMp4()" 
+                    class="bg-zinc-800 hover:bg-zinc-700 px-5 py-2 rounded-2xl text-white text-xs font-medium">
+                📋 COPY MP4 URL
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let PROXY = "https://leakemms.godess.workers.dev/?url=";
+    const BASE = "https://pornchinese.net";
+    
+    let currentCategoryHref = '';
+    let currentCategoryName = '';
+    let currentVideoHref = '';
+    let currentVideoTitle = '';
+    let currentVideoDuration = '';
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    async function fetchHTML(url) {
+        const full = PROXY + encodeURIComponent(url.startsWith("http") ? url : BASE + url);
+        const res = await fetch(full);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        return new DOMParser().parseFromString(text, "text/html");
+    }
+
+    function parseCategories(doc) {
+        const categories = [];
+        const cards = doc.querySelectorAll('a.grid-xx13');
+        cards.forEach(card => {
+            const href = card.getAttribute('href');
+            const img = card.querySelector('img');
+            const titleEl = card.querySelector('.grid-xx13-title');
+            const countEl = card.querySelector('.grid-xx13-xx17');
+            if (href && img) {
+                categories.push({
+                    href: href,
+                    title: titleEl ? titleEl.textContent.trim() : img.getAttribute('alt') || 'Category',
+                    img: img.getAttribute('src'),
+                    count: countEl ? countEl.textContent.trim() : ''
+                });
+            }
+        });
+        return categories;
+    }
+
+    function parseVideos(doc) {
+        const videos = [];
+        const cards = doc.querySelectorAll('.grid-xx13');
+        cards.forEach(card => {
+            const videoLink = card.querySelector('a[href*="/videos"]');
+            const img = card.querySelector('img');
+            const duration = card.querySelector('.grid-xx13-xx17');
+            const subcat = card.querySelector('.grid-xx13-xx4 a');
+            if (videoLink && img) {
+                videos.push({
+                    href: videoLink.getAttribute('href'),
+                    title: img.getAttribute('alt') || 'Video',
+                    thumb: img.getAttribute('src'),
+                    duration: duration ? duration.textContent.trim() : '??:??',
+                    subcat: subcat ? subcat.textContent.trim() : ''
+                });
+            }
+        });
+        return videos;
+    }
+
+    function parsePagination(doc) {
+        const pages = [];
+        const pageLinks = doc.querySelectorAll('a[href*="/top/"], a[href*="/page/"]');
+        pageLinks.forEach(a => {
+            const href = a.getAttribute('href');
+            const text = a.textContent.trim();
+            if (href && text) {
+                pages.push({ href: href, page: text });
+            }
+        });
+        return pages.filter((v, i, a) => a.findIndex(t => t.href === v.href) === i);
+    }
+
+    // ==================== MP4 EXTRACTION WITH RETRIES ====================
+    async function getDirectMP4(videoPageUrl, attempt = 1) {
+        document.getElementById('attempt-count').textContent = attempt;
+        document.getElementById('retry-btn').classList.add('hidden');
+        
+        try {
+            const doc = await fetchHTML(videoPageUrl);
+            
+            let src = doc.querySelector('source[type="video/mp4"], source[src*=".mp4"]')?.getAttribute('src');
+            if (src) return src;
+            
+            src = doc.querySelector('video')?.getAttribute('src');
+            if (src) return src;
+            
+            const videos = doc.querySelectorAll('video');
+            for (let v of videos) {
+                if (v.shadowRoot) {
+                    const shadowSrc = v.shadowRoot.querySelector('source')?.getAttribute('src');
+                    if (shadowSrc) return shadowSrc;
+                }
+            }
+            
+            const scripts = doc.querySelectorAll('script');
+            for (let script of scripts) {
+                const match = (script.textContent || '').match(/https?:\/\/[^\s"'`]+\.mp4[^\s"'`]*/i);
+                if (match) return match[0];
+            }
+            
+            if (attempt < MAX_RETRIES) {
+                await new Promise(r => setTimeout(r, 800)); // small delay between retries
+                return getDirectMP4(videoPageUrl, attempt + 1);
+            }
+            
+            return null;
+        } catch (e) {
+            console.error(`Attempt ${attempt} failed:`, e);
+            if (attempt < MAX_RETRIES) {
+                await new Promise(r => setTimeout(r, 1000));
+                return getDirectMP4(videoPageUrl, attempt + 1);
+            }
+            return null;
+        }
+    }
+
+    function renderCategories(cats) {
+        const grid = document.getElementById('categories-grid');
+        grid.innerHTML = '';
+        cats.forEach(cat => {
+            const imgUrl = cat.img.startsWith('http') ? cat.img : BASE + cat.img;
+            grid.innerHTML += `
+            <div onclick="loadVideos('${cat.href}', '${cat.title.replace(/'/g, "\\'")}')" 
+                 class="card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer">
+                <div class="thumb-container">
+                    <img src="${imgUrl}" alt="${cat.title}" class="w-full" onerror="this.src='https://via.placeholder.com/640x360/111/fff?text=${cat.title}'">
+                    ${cat.count ? `<div class="absolute bottom-4 right-4 bg-black/80 text-xs px-3 py-1 rounded-2xl">${cat.count}</div>` : ''}
+                </div>
+                <div class="p-5 text-center">
+                    <div class="font-semibold">${cat.title}</div>
+                </div>
+            </div>`;
+        });
+    }
+
+    function renderVideos(videos) {
+        const grid = document.getElementById('videos-grid');
+        grid.innerHTML = '';
+        videos.forEach(vid => {
+            const thumbUrl = vid.thumb.startsWith('http') ? vid.thumb : BASE + vid.thumb;
+            grid.innerHTML += `
+            <div onclick="openVideo('${vid.href}', '${vid.title.replace(/'/g, "\\'")}', '${vid.duration}')" 
+                 class="card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer group">
+                <div class="thumb-container">
+                    <img src="${thumbUrl}" alt="${vid.title}" class="w-full" onerror="this.src='https://via.placeholder.com/640x360/111/fff?text=Video'">
+                    <div class="absolute bottom-3 right-3 bg-black/80 text-xs px-2.5 py-px rounded-xl">${vid.duration}</div>
+                </div>
+                <div class="p-4">
+                    <p class="line-clamp-2 text-sm">${vid.title}</p>
+                </div>
+            </div>`;
+        });
+    }
+
+    function renderPagination(pages) {
+        const bar = document.getElementById('pagination-bar');
+        bar.innerHTML = '';
+        if (pages.length < 2) return;
+        pages.forEach(p => {
+            const btn = document.createElement('button');
+            btn.className = `px-5 py-2 rounded-2xl text-sm font-medium border border-zinc-700 hover:border-red-500`;
+            btn.textContent = p.page;
+            btn.onclick = () => loadSpecificPage(p.href);
+            bar.appendChild(btn);
+        });
+    }
+
+    async function loadHome() {
+        document.getElementById('home-view').classList.remove('hidden');
+        document.getElementById('videos-view').classList.add('hidden');
+        document.getElementById('current-cat').textContent = '';
+        try {
+            const doc = await fetchHTML('/');
+            renderCategories(parseCategories(doc));
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function loadVideos(href, name) {
+        currentCategoryHref = href;
+        currentCategoryName = name;
+        document.getElementById('home-view').classList.add('hidden');
+        document.getElementById('videos-view').classList.remove('hidden');
+        document.getElementById('current-cat').textContent = name;
+        document.getElementById('videos-title').textContent = name;
+        
+        try {
+            const doc = await fetchHTML(href);
+            renderVideos(parseVideos(doc));
+            renderPagination(parsePagination(doc));
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function loadSpecificPage(pageHref) {
+        document.getElementById('videos-grid').innerHTML = `<div class="col-span-full py-20 flex justify-center"><div class="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div></div>`;
+        try {
+            const doc = await fetchHTML(pageHref);
+            renderVideos(parseVideos(doc));
+            renderPagination(parsePagination(doc));
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function openVideo(href, title, duration) {
+        currentVideoHref = href;
+        currentVideoTitle = title;
+        currentVideoDuration = duration;
+        retryCount = 0;
+        
+        const modal = document.getElementById('modal');
+        const player = document.getElementById('main-player');
+        const loading = document.getElementById('player-loading');
+        
+        modal.classList.remove('hidden');
+        player.classList.add('hidden');
+        loading.classList.remove('hidden');
+        
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-duration').textContent = duration;
+        document.getElementById('retry-btn').classList.add('hidden');
+        
+        await attemptExtraction();
+    }
+
+    async function attemptExtraction() {
+        retryCount++;
+        document.getElementById('attempt-count').textContent = retryCount;
+        document.getElementById('retry-btn').classList.add('hidden');
+        
+        const mp4 = await getDirectMP4(currentVideoHref);
+        
+        if (mp4) {
+            let finalUrl = mp4.startsWith('http') ? mp4 : BASE + mp4;
+            if (finalUrl.includes('xnxx') || finalUrl.includes('asianmilf')) {
+                finalUrl = PROXY + encodeURIComponent(finalUrl);
+            }
+            
+            document.getElementById('mp4-link').textContent = finalUrl;
+            const player = document.getElementById('main-player');
+            player.src = finalUrl;
+            document.getElementById('player-loading').classList.add('hidden');
+            player.classList.remove('hidden');
+            player.play().catch(() => {});
+        } else {
+            const loading = document.getElementById('player-loading');
+            if (retryCount >= MAX_RETRIES) {
+                document.getElementById('loading-text').innerHTML = `Failed after ${MAX_RETRIES} attempts`;
+                document.getElementById('retry-btn').classList.remove('hidden');
+            } else {
+                // Will be handled by recursive call in getDirectMP4
+            }
+        }
+    }
+
+    function retryExtraction() {
+        document.getElementById('loading-text').textContent = 'Retrying extraction...';
+        attemptExtraction();
+    }
+
+    function closeModal() {
+        const player = document.getElementById('main-player');
+        player.pause();
+        player.src = '';
+        document.getElementById('modal').classList.add('hidden');
+    }
+
+    function copyMp4() {
+        const txt = document.getElementById('mp4-link').textContent;
+        navigator.clipboard.writeText(txt);
+    }
+
+    function refreshAll() {
+        PROXY = document.getElementById('proxy-url').value.trim() || "https://leakemms.godess.workers.dev/?url=";
+        showHome();
+        setTimeout(loadHome, 150);
+    }
+
+    function showHome() {
+        document.getElementById('home-view').classList.remove('hidden');
+        document.getElementById('videos-view').classList.add('hidden');
+        document.getElementById('current-cat').textContent = '';
+    }
+
+    window.onload = () => {
+        console.log("%c✅ PornChinese Scraper with MP4 Retry System Ready", "color:#ff2d55; font-weight:bold");
+        loadHome();
+    };
+</script>
+</body>
+</html>
