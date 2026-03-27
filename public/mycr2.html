@@ -143,30 +143,19 @@ const PROXY="https://allinone.godess.workers.dev/?url="
 let currentSources=[]
 let hlsInstance=null
 
-console.log("APP STARTED")
-
 loadCategories()
 loadLatest()
 
 /* ---------------- PROXY FETCH ---------------- */
 
 async function proxyFetch(url){
-
-console.log("Proxy fetch:",url)
-
 let res=await fetch(PROXY+encodeURIComponent(url))
-
-let text=await res.text()
-
-return text
-
+return await res.text()
 }
 
 /* ---------------- REDIRECT FOLLOWER ---------------- */
 
 async function followRedirect(url){
-
-console.log("Redirect start:",url)
 
 let final=url
 
@@ -176,15 +165,10 @@ let r=await fetch(PROXY+encodeURIComponent(final),{
 redirect:"follow"
 })
 
-console.log("Redirect step",i,"->",r.url)
-
 if(r.url===final) break
-
 final=r.url
 
 }
-
-console.log("Final stream:",final)
 
 return final
 
@@ -245,10 +229,8 @@ img=p._embedded["wp:featuredmedia"][0].source_url
 html+=`
 
 <div class="card" onclick="openPost(${p.id})">
-
 <img src="${img}">
 <h3>${p.title.rendered}</h3>
-
 </div>
 
 `
@@ -288,13 +270,10 @@ if(isDownloadHost(l)) return
 linkHTML+=`
 
 <div class="linkBox">
-
 ${l}
-
 <button class="extractbtn" onclick="extractStream('${l}')">
 Extract
 </button>
-
 </div>
 
 `
@@ -310,11 +289,8 @@ document.getElementById("postPage").innerHTML=`
 <h2>${post.title.rendered}</h2>
 
 <div class="playerBox">
-
 <video id="player" controls></video>
-
 <div id="qualityBox"></div>
-
 </div>
 
 <h3>Links</h3>
@@ -330,7 +306,6 @@ ${linkHTML}
 function extractLinks(html){
 
 let urls=new Set()
-
 let regex=/(https?:\/\/[^"'<> ]+)/g
 let match
 
@@ -343,8 +318,6 @@ urls.add(url)
 }
 
 }
-
-console.log("Links found:",[...urls])
 
 return [...urls]
 
@@ -369,33 +342,138 @@ return blocked.some(h=>url.includes(h))
 
 async function extractStream(link){
 
-console.log("Extracting:",link)
-
 let html=await proxyFetch(link)
 
 /* JWPLAYER HOSTS */
-
 if(link.includes("vidnest") || link.includes("lulu") || link.includes("luluvdoo")){
 extractJW(html)
 return
 }
 
-/* STRCLOUD FAMILY */
-
+/* STRCLOUD */
 if(link.includes("strcloud") || link.includes("advertape") || link.includes("tapeadsenjoyer")){
 extractStrcloud(html)
 return
 }
 
-console.log("Host not supported")
+// ✅ BOODSTREAM SUPPORT
+if(link.includes("boodstream.cc")){
+console.log("➡️ Using BOODSTREAM extractor")
+extractBoodstream(link)
+return
+}
+
+// ✅ BOODSTREAM SUPPORT
+if(link.includes("minitube.online")){
+console.log("➡️ Using minitube extractor")
+extractBoodstream(link)
+return
+}
+
+}
+
+
+async function extractBoodstream(link){
+
+console.log("🎯 BOODSTREAM LINK:", link)
+
+// extract videoId
+let match = link.match(/boodstream\.cc\/([A-Z0-9]+)/i)
+
+if(!match){
+console.log("❌ Invalid boodstream link")
+return
+}
+
+const videoId = match[1]
+console.log("🆔 videoId:", videoId)
+
+const reqId = crypto.randomUUID()
+const time = Date.now().toString()
+const userStr = crypto.randomUUID()
+
+console.log("🆔 reqId:", reqId)
+console.log("⏱️ time:", time)
+
+// load CryptoJS
+if (!window.CryptoJS) {
+console.log("📦 Loading CryptoJS...")
+await new Promise(res => {
+const s = document.createElement("script")
+s.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"
+s.onload = () => {
+console.log("✅ CryptoJS Loaded")
+res()
+}
+document.head.appendChild(s)
+})
+}
+
+const key = CryptoJS.enc.Utf8.parse("kP9rT2vN8mJ1bZ6c")
+const iv  = CryptoJS.enc.Utf8.parse("d7e8f9a0b1c2d3e4")
+
+const raw = `t:WF;kZKMcXwKqE${reqId}`
+console.log("🧾 raw:", raw)
+
+const sign = CryptoJS.AES.encrypt(raw, key, {
+iv,
+mode: CryptoJS.mode.CBC,
+padding: CryptoJS.pad.Pkcs7
+}).toString()
+
+console.log("🔐 sign:", sign)
+
+const api = `https://apbood.boodstream.com/v1/file/getVideo?videoId=${videoId}&userStr=${userStr}`
+console.log("🌐 API:", api)
+
+try {
+
+console.log("📤 Sending request...")
+
+const res = await fetch(api, {
+method: "GET",
+mode: "cors",
+headers: {
+"a-req-id": reqId,
+"a-time": time,
+"user-client": crypto.randomUUID(),
+"country-no": navigator.language || "en_US",
+"a-sign": sign
+}
+})
+
+console.log("📡 Status:", res.status)
+
+const data = await res.json()
+console.log("🔥 RESPONSE:", data)
+
+if(data.code === 0){
+
+const videoUrl = data.data.videoUrl
+
+console.log("🎬 STREAM URL:", videoUrl)
+
+// 🔥 ONLY ADD THIS LINE (reuse your existing player)
+playStream(videoUrl)
+
+// optional log in UI
+document.getElementById("qualityBox").innerHTML += `
+<div class="linkBox">🎬 ${videoUrl}</div>
+`
+
+}else{
+console.log("❌ API Error:", data.msg)
+}
+
+}catch(e){
+console.error("💥 Fetch failed:", e)
+}
 
 }
 
 /* ---------------- JWPLAYER PARSER ---------------- */
 
 function extractJW(html){
-
-console.log("JW parser")
 
 let fileRegex=/file\s*:\s*"([^"]+)"/g
 let labelRegex=/label\s*:\s*"([^"]+)"/g
@@ -407,20 +485,23 @@ currentSources=[]
 
 for(let i=0;i<files.length;i++){
 
+let streamURL = files[i][1]
+
+/* ✅ APPLY PROXY ONLY FOR LULU / VIDNEST */
+if(streamURL.includes("lulu") || streamURL.includes("vidnest")){
+streamURL = PROXY + encodeURIComponent(streamURL)
+}
+
 currentSources.push({
-file:files[i][1],
+file:streamURL,
 label:labels[i] ? labels[i][1] : "auto"
 })
 
 }
 
-console.log("Sources:",currentSources)
-
 if(currentSources.length>0){
-
 renderQualityButtons()
 playStream(currentSources[0].file)
-
 }
 
 }
@@ -429,14 +510,9 @@ playStream(currentSources[0].file)
 
 async function extractStrcloud(html){
 
-console.log("Strcloud extractor")
-
 let match=html.match(/id="(?:ideoooolink|captchalink|norobotlink)"[^>]*>(.*?)</)
 
-if(!match){
-console.log("No redirect found")
-return
-}
+if(!match) return
 
 let url=match[1]
 
@@ -444,8 +520,6 @@ url=url.replace(/&amp;/g,"&")
 
 if(url.startsWith("//")) url="https:"+url
 if(url.startsWith("/")) url="https:"+url
-
-console.log("Extracted redirect:",url)
 
 let final=await followRedirect(url)
 
@@ -457,8 +531,6 @@ playStream(final)
 
 function playStream(url){
 
-console.log("Playing:",url)
-
 let player=document.getElementById("player")
 
 if(hlsInstance){
@@ -466,26 +538,23 @@ hlsInstance.destroy()
 hlsInstance=null
 }
 
+/* ✅ PREVENT DOUBLE PROXY */
+if(!url.startsWith(PROXY) && url.includes(".m3u8")){
+url = PROXY + encodeURIComponent(url)
+}
+
 if(url.includes(".m3u8")){
 
 if(Hls.isSupported()){
-
 hlsInstance=new Hls()
-
 hlsInstance.loadSource(url)
-
 hlsInstance.attachMedia(player)
-
 }else{
-
 player.src=url
-
 }
 
 }else{
-
 player.src=url
-
 }
 
 player.play()
@@ -509,14 +578,11 @@ document.getElementById("qualityBox").innerHTML=html
 /* ---------------- BACK ---------------- */
 
 function back(){
-
 document.getElementById("postPage").style.display="none"
 document.getElementById("posts").style.display="grid"
-
 }
 
 </script>
 
 </body>
-
 </html>
