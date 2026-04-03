@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JAVSUB ULTRA - Full Thumb & Meta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root { --primary: #e11d48; --bg: #020617; }
+        body { background-color: var(--bg); color: #f1f5f9; font-family: sans-serif; overflow-x: hidden; }
+        
+        /* Ensures image is full and container wraps tightly around it */
+        .img-container { width: 100%; height: auto; background: #000; overflow: hidden; }
+        .img-full { width: 100%; height: auto; display: block; object-fit: contain; }
+
+        .player-box { width: 100%; aspect-ratio: 16/9; background: #000; position: relative; border-bottom: 1px solid #1e293b; }
+        .player-box iframe, .player-box video { position: absolute; width: 100%; height: 100%; border: none; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .btn-action:active { transform: scale(0.98); opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <nav class="sticky top-0 z-50 bg-slate-950 border-b border-slate-800 p-3 flex items-center gap-2">
+        <h1 class="text-rose-600 font-black text-xl tracking-tighter cursor-pointer" onclick="location.reload()">JAVSUB</h1>
+        <div class="flex-1 px-2">
+            <input type="text" id="searchInp" placeholder="Search..." class="w-full bg-slate-900 rounded-full px-4 py-1.5 text-xs outline-none border border-transparent focus:border-rose-600">
+        </div>
+        <button onclick="toggleCats()" class="text-xl text-slate-400 p-1"><i class="ri-equalizer-line"></i></button>
+    </nav>
+    <div id="catBox" class="hidden bg-slate-950 p-3 flex gap-2 overflow-x-auto hide-scroll border-b border-slate-800"></div>
+
+    <main id="app">
+        <div id="postGrid" class="grid grid-cols-2 gap-3 p-3"></div>
+        <div class="pager p-6 flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest"></div>
+    </main>
+
+    <div id="subPost" class="fixed inset-0 z-[100] bg-slate-950 hidden overflow-y-auto">
+        <div class="sticky top-0 z-[110] bg-slate-900/90 backdrop-blur p-3 flex items-center border-b border-slate-800">
+            <button onclick="closeSub()" class="p-2 mr-2 bg-slate-800 rounded-full"><i class="ri-arrow-left-line text-lg"></i></button>
+            <span id="subHeaderTitle" class="text-[10px] font-bold truncate flex-1 uppercase text-slate-400">Video Details</span>
+        </div>
+
+        <div id="playerArea" class="player-box">
+            <div class="absolute inset-0 flex items-center justify-center text-slate-700 text-[10px] font-bold uppercase tracking-widest">Select a Server to Play</div>
+        </div>
+
+        <div class="p-4">
+            <div id="subImg" class="mb-4 rounded-xl overflow-hidden border border-slate-800 bg-black"></div>
+            <div id="subMeta" class="mb-2 flex items-center gap-3 text-[10px] text-slate-500 font-bold uppercase"></div>
+            <h2 id="subFullTitle" class="text-lg font-bold leading-tight mb-8"></h2>
+
+            <div class="space-y-8">
+                <div>
+                    <h3 class="text-rose-500 text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i class="ri-play-mini-fill text-sm"></i> Streaming Servers
+                    </h3>
+                    <div id="streamLinks" class="space-y-2"></div>
+                </div>
+
+                <div>
+                    <h3 class="text-sky-500 text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i class="ri-download-cloud-2-line text-sm"></i> Downloads
+                    </h3>
+                    <div id="downloadLinks" class="grid grid-cols-2 gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "https://javsubindo.com/wp-json/wp/v2";
+        const PROXY = "https://javhd.godess.workers.dev/?url=";
+
+        async function getRaw(url, isJson = false) {
+            const target = isJson ? url : PROXY + encodeURIComponent(url);
+            const res = await fetch(target);
+            return isJson ? await res.json() : await res.text();
+        }
+
+        function formatTime(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) + ' • ' + 
+                   d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+        }
+
+        async function loadPosts(page = 1) {
+            const grid = document.getElementById('postGrid');
+            grid.innerHTML = '<div class="col-span-2 text-center py-10 animate-pulse text-xs text-slate-500">FETCHING CONTENT...</div>';
+            
+            try {
+                const data = await getRaw(`${API}/posts?per_page=14&page=${page}&_embed`, true);
+                grid.innerHTML = '';
+                data.forEach(p => {
+                    const thumb = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+                    const card = document.createElement('div');
+                    card.className = "bg-slate-900 rounded-lg overflow-hidden border border-slate-800 btn-action cursor-pointer flex flex-col";
+                    card.onclick = () => viewPost(p.id);
+                    card.innerHTML = `
+                        <div class="img-container">
+                            <img src="${thumb}" class="img-full" alt="thumb">
+                        </div>
+                        <div class="p-2 flex-1">
+                            <div class="text-[9px] text-rose-500 font-bold mb-1 uppercase tracking-tighter">
+                                <i class="ri-calendar-event-line"></i> ${formatTime(p.date)}
+                            </div>
+                            <div class="text-[11px] font-bold line-clamp-2 leading-snug">${p.title.rendered}</div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                renderPager(page);
+            } catch (e) {
+                grid.innerHTML = '<div class="col-span-2 text-center text-rose-500 p-10">Error loading data.</div>';
+            }
+        }
+
+        async function viewPost(id) {
+            const sub = document.getElementById('subPost');
+            sub.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            const post = await getRaw(`${API}/posts/${id}?_embed`, true);
+            document.getElementById('subFullTitle').innerText = post.title.rendered;
+            document.getElementById('subMeta').innerHTML = `<i class="ri-time-line"></i> Uploaded: ${formatTime(post.date)}`;
+            document.getElementById('subImg').innerHTML = `<img src="${post._embedded?.['wp:featuredmedia']?.[0]?.source_url}" class="img-full">`;
+
+            const html = await getRaw(post.link);
+            const dlArea = document.getElementById('downloadLinks');
+            const stArea = document.getElementById('streamLinks');
+            dlArea.innerHTML = ''; stArea.innerHTML = '';
+
+            const dlRegex = /<a[^>]*class="button"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+            let match;
+            
+            while ((match = dlRegex.exec(html)) !== null) {
+                const url = match[1];
+                const label = match[2].replace(/<[^>]*>/g, '').trim();
+                
+                const a = document.createElement('a');
+                a.href = url; a.target = "_blank";
+                a.className = "bg-slate-800 p-2 rounded border border-white/5 text-[9px] font-bold uppercase text-center btn-action";
+                a.innerText = label;
+                dlArea.appendChild(a);
+
+                let streamUrl = "";
+                let serverName = "";
+
+                if (url.includes('nekovid.xyz')) {
+                    streamUrl = `https://nekovid.xyz/embed/${url.split('/').pop()}`;
+                    serverName = "Neko SV";
+                } else if (url.includes('streamtape.to')) {
+                    streamUrl = `https://streamtape.to/e/${url.split('/').pop()}`;
+                    serverName = "Tape SV";
+                } else if (url.includes('bysewihe.com')) {
+                    streamUrl = `https://bysewihe.com/e/${url.split('/').pop()}`;
+                    serverName = "Byse SV";
+                } else if (url.includes('savefiles.com')) {
+                    streamUrl = `https://savefiles.com/e/${url.split('/').pop()}`;
+                    serverName = "Save SV";
+                }
+
+                if (streamUrl) {
+                    const div = document.createElement('div');
+                    div.className = "flex items-center gap-2 bg-slate-900 p-2 rounded border border-white/5 shadow-lg";
+                    div.innerHTML = `
+                        <span class="flex-1 text-[10px] font-black text-slate-500 uppercase">${serverName} - ${label}</span>
+                        <button onclick="playIf('${streamUrl}')" class="bg-slate-800 px-4 py-1.5 rounded text-[10px] font-bold btn-action">PLAY</button>
+                        <button onclick="deepExtract('${streamUrl}', '${url}')" class="bg-rose-600 px-4 py-1.5 rounded text-[10px] font-bold uppercase btn-action">HLS</button>
+                    `;
+                    stArea.appendChild(div);
+                }
+            }
+        }
+
+        function playIf(u) { 
+            const area = document.getElementById('playerArea');
+            area.innerHTML = `<iframe src="${u}" allowfullscreen sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"></iframe>`; 
+        }
+
+        async function deepExtract(embedUrl, downloadUrl) {
+            const area = document.getElementById('playerArea');
+            area.innerHTML = `<div class="absolute inset-0 flex items-center justify-center bg-black z-20 text-rose-500 text-[10px] font-black animate-pulse">EXTRACTING HLS...</div>`;
+            try {
+                let html = await getRaw(embedUrl);
+                let m3u8 = scanM3U8(html);
+                if (!m3u8) {
+                    html = await getRaw(downloadUrl);
+                    m3u8 = scanM3U8(html);
+                }
+                if (m3u8) {
+                    area.innerHTML = `<video id="hv" controls autoplay class="w-full h-full"></video>`;
+                    const v = document.getElementById('hv');
+                    if (Hls.isSupported()) {
+                        const hls = new Hls({ maxBufferLength: 30 });
+                        hls.loadSource(m3u8); hls.attachMedia(v);
+                    } else { v.src = m3u8; }
+                } else { 
+                    alert("HLS logic not available for this server. Loading standard player.");
+                    playIf(embedUrl); 
+                }
+            } catch (e) { playIf(embedUrl); }
+        }
+
+        function scanM3U8(html) {
+            let found = "";
+            if (html.includes('eval(function')) {
+                const packed = html.match(/eval\(function\(p,a,c,k,e,d\).+?\}\)\)/)[0];
+                const unpacked = eval(packed.replace('eval', ''));
+                found = unpacked.match(/https?:\/\/[^"']+\.m3u8[^"']*/i)?.[0];
+            } else {
+                found = html.match(/https?:\/\/[^"']+\.m3u8[^"']*/i)?.[0];
+            }
+            return found;
+        }
+
+        function renderPager(p) {
+            const h = `<button onclick="loadPosts(${p-1})" ${p<=1?'disabled class="opacity-20"':''}>PREV</button><span>PAGE ${p}</span><button onclick="loadPosts(${p+1})">NEXT</button>`;
+            document.querySelectorAll('.pager').forEach(el => el.innerHTML = h);
+        }
+
+        function toggleCats() { document.getElementById('catBox').classList.toggle('hidden'); }
+        function closeSub() { document.getElementById('subPost').classList.add('hidden'); document.getElementById('playerArea').innerHTML = ''; document.body.style.overflow = 'auto'; }
+
+        loadPosts();
+        getRaw(`${API}/categories?per_page=30`, true).then(cats => {
+            document.getElementById('catBox').innerHTML = cats.map(c => `<button onclick="loadPostsByCat(${c.id})" class="whitespace-nowrap px-4 py-1.5 bg-slate-800 rounded-full text-[10px] font-bold uppercase">${c.name}</button>`).join('');
+        });
+
+        async function loadPostsByCat(catId) {
+            const grid = document.getElementById('postGrid');
+            grid.innerHTML = '<div class="col-span-2 text-center py-10 animate-pulse text-xs text-slate-500">FILTERING...</div>';
+            const data = await getRaw(`${API}/posts?categories=${catId}&per_page=14&_embed`, true);
+            grid.innerHTML = '';
+            data.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 rounded-lg overflow-hidden border border-slate-800 btn-action flex flex-col";
+                card.onclick = () => viewPost(p.id);
+                card.innerHTML = `
+                    <div class="img-container"><img src="${p._embedded?.['wp:featuredmedia']?.[0]?.source_url}" class="img-full"></div>
+                    <div class="p-2">
+                        <div class="text-[9px] text-rose-500 font-bold mb-1 uppercase tracking-tighter">${formatTime(p.date)}</div>
+                        <div class="text-[11px] font-bold line-clamp-2">${p.title.rendered}</div>
+                    </div>`;
+                grid.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
