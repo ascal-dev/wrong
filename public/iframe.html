@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Stream Player</title>
+    <style>
+        :root {
+            --accent: #e50914;
+            --bg: #050505;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg);
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        /* Full Screen Poster Background */
+        .poster-bg {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                        url('https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059') no-repeat center center/cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+            transition: opacity 0.5s ease;
+        }
+
+        .play-trigger {
+            padding: 20px 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            background: var(--accent);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+            transition: transform 0.2s, background 0.3s;
+        }
+
+        .play-trigger:hover {
+            transform: scale(1.1);
+            background: #ff0f1f;
+        }
+
+        /* The Stream Container */
+        #stream-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none; /* Hidden until button click */
+            z-index: 10;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            z-index: 20;
+        }
+
+        .close-btn:hover { background: var(--accent); }
+
+        .hidden { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="poster-bg" id="poster">
+        <h1 style="margin-bottom: 20px;">Ready to Stream</h1>
+        <button class="play-trigger" onclick="loadStream('https://www.wetsins.com/')">
+            ▶ CLICK TO PLAY WETSINS
+        </button
+        <br></br>
+        <button class="play-trigger" onclick="loadStream('https://pornrape.tv/')">
+            ▶ CLICK TO PLAY PORNRAPE
+        </button>
+    </div>
+
+    <div id="stream-container">
+        <button class="close-btn" onclick="closeStream()">✕ Close Player</button>
+        <iframe 
+            id="video-frame" 
+            src="" 
+            allowfullscreen 
+            sandbox="allow-forms allow-scripts allow-same-origin">
+        </iframe>
+    </div>
+
+    <script>
+        const poster = document.getElementById('poster');
+        const container = document.getElementById('stream-container');
+        const iframe = document.getElementById('video-frame');
+
+        function loadStream(url) {
+            // Set the URL only when clicked
+            iframe.src = url;
+            
+            // UI transitions
+            poster.classList.add('hidden');
+            container.style.display = 'block';
+            
+            console.log("Loading Stream: " + url);
+        }
+
+        function closeStream() {
+            // Remove URL to stop any playing audio/video in background
+            iframe.src = "";
+            
+            // UI transitions
+            poster.classList.remove('hidden');
+            container.style.display = 'none';
+        }
+    </script>
+
+</body>
+</html>
