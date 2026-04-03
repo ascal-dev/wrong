@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Stream Player</title>
+    <title>Dynamic Stream Player (Proxied)</title>
     <style>
         :root {
             --accent: #e50914;
@@ -15,17 +15,16 @@
             padding: 0;
             height: 100%;
             background-color: var(--bg);
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
             overflow: hidden;
         }
 
-        /* Full Screen Poster Background */
         .poster-bg {
             position: fixed;
             width: 100%;
             height: 100%;
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), 
                         url('https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059') no-repeat center center/cover;
             display: flex;
             flex-direction: column;
@@ -36,24 +35,24 @@
         }
 
         .play-trigger {
-            padding: 20px 50px;
-            font-size: 1.5rem;
+            padding: 15px 40px;
+            margin: 10px;
+            font-size: 1.2rem;
             font-weight: bold;
             color: white;
             background: var(--accent);
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.4);
             transition: transform 0.2s, background 0.3s;
         }
 
         .play-trigger:hover {
-            transform: scale(1.1);
+            transform: scale(1.05);
             background: #ff0f1f;
         }
 
-        /* The Stream Container */
         #stream-container {
             position: fixed;
             top: 0;
@@ -61,7 +60,7 @@
             width: 100%;
             height: 100%;
             background: #000;
-            display: none; /* Hidden until button click */
+            display: none;
             z-index: 10;
         }
 
@@ -75,9 +74,9 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.6);
             color: white;
-            border: none;
+            border: 1px solid rgba(255,255,255,0.3);
             padding: 10px 20px;
             cursor: pointer;
             border-radius: 5px;
@@ -85,20 +84,18 @@
         }
 
         .close-btn:hover { background: var(--accent); }
-
         .hidden { opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div class="poster-bg" id="poster">
-        <h1 style="margin-bottom: 20px;">Ready to Stream</h1>
+        <h1 style="margin-bottom: 30px;">Select a Source</h1>
         <button class="play-trigger" onclick="loadStream('https://www.wetsins.com/')">
-            ▶ CLICK TO PLAY WETSINS
-        </button
-        <br></br>
+            ▶ STREAM WETSINS
+        </button>
         <button class="play-trigger" onclick="loadStream('https://pornrape.tv/')">
-            ▶ CLICK TO PLAY PORNRAPE
+            ▶ STREAM PORNRAPE
         </button>
     </div>
 
@@ -108,31 +105,31 @@
             id="video-frame" 
             src="" 
             allowfullscreen 
-            sandbox="allow-forms allow-scripts allow-same-origin">
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups">
         </iframe>
     </div>
 
     <script>
+        // CHANGE THIS to your actual Worker URL
+        const PROXY_BASE = "https://allinone.godess.workers.dev/?url=";
+
         const poster = document.getElementById('poster');
         const container = document.getElementById('stream-container');
         const iframe = document.getElementById('video-frame');
 
         function loadStream(url) {
-            // Set the URL only when clicked
-            iframe.src = url;
+            // Encode the URL and attach it to your proxy
+            const finalUrl = PROXY_BASE + encodeURIComponent(url);
             
-            // UI transitions
+            iframe.src = finalUrl;
             poster.classList.add('hidden');
             container.style.display = 'block';
             
-            console.log("Loading Stream: " + url);
+            console.log("Requesting via Proxy: " + finalUrl);
         }
 
         function closeStream() {
-            // Remove URL to stop any playing audio/video in background
-            iframe.src = "";
-            
-            // UI transitions
+            iframe.src = ""; // Stop the stream/audio
             poster.classList.remove('hidden');
             container.style.display = 'none';
         }
