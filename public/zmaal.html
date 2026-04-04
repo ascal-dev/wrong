@@ -5,8 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zmaal Latest Posts</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #0b1117;
@@ -120,10 +119,6 @@
             margin-top: 10px;
         }
 
-        .grid.search-mode {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-
         .card {
             background: linear-gradient(180deg, rgba(17, 27, 37, 0.9), rgba(9, 15, 23, 0.9));
             border: 1px solid var(--border);
@@ -211,9 +206,7 @@
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         footer {
@@ -223,28 +216,27 @@
             text-align: center;
         }
 
+        /* Player Styles */
         .player {
             position: fixed;
             inset: 0;
-            background: rgba(5, 10, 14, 0.86);
+            background: rgba(5, 10, 14, 0.92);
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 40;
+            z-index: 100;
             padding: 20px;
         }
 
-        .player.show {
-            display: flex;
-        }
+        .player.show { display: flex; }
 
         .player-card {
-            width: min(960px, 100%);
+            width: min(1000px, 100%);
             background: var(--bg2);
             border: 1px solid var(--border);
             border-radius: 18px;
             overflow: hidden;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
         }
 
         .player-header {
@@ -259,47 +251,38 @@
             font-size: 14px;
             font-weight: 600;
             flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .player-close {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 6px 10px;
-            border-radius: 10px;
+            background: #ef4444;
+            border: none;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 12px;
-        }
-
-        .player-close:hover {
-            border-color: var(--accent);
+            font-weight: 700;
         }
 
         .player-body {
             position: relative;
             background: #000;
+            aspect-ratio: 16 / 9;
         }
 
         .player-body video {
             width: 100%;
-            height: auto;
-            aspect-ratio: 16 / 9;
+            height: 100%;
             display: block;
-            background: #000;
         }
 
         @media (max-width: 640px) {
-            .brand {
-                font-size: 1.3rem;
-            }
-
-            .grid {
-                grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-            }
-
-            .thumb {
-                height: 140px;
-            }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+            .thumb { height: 120px; }
+            .toolbar { justify-content: center; margin-top: 10px; width: 100%; }
         }
     </style>
 </head>
@@ -308,12 +291,12 @@
     <div class="wrap">
         <header>
             <div class="brand">Zmaal Latest</div>
-            <div class="pill">Direct from WP JSON</div>
+            <div class="pill">Aggressive Extraction v2</div>
             <div class="toolbar">
                 <input id="searchInput" class="search" type="text" placeholder="Search posts..." />
                 <button class="btn" id="searchBtn">Search</button>
                 <button class="btn" id="clearBtn">Clear</button>
-                <input id="pageInput" class="search" type="number" min="1" placeholder="Go to page" style="max-width:120px;" />
+                <input id="pageInput" class="search" type="number" min="1" placeholder="Page" style="max-width:80px;" />
                 <button class="btn" id="goBtn">Go</button>
                 <button class="btn" id="prevBtn">Prev</button>
                 <div class="page-info" id="pageInfo">Page 1</div>
@@ -324,17 +307,17 @@
         <div id="status" class="status" style="display:none;"></div>
         <div class="grid" id="grid"></div>
 
-        <footer>Showing the latest posts with direct links built from the WP JSON feed.</footer>
+        <footer>Direct Stream Extractor &bull; 2026</footer>
     </div>
 
     <div class="player" id="player">
         <div class="player-card">
             <div class="player-header">
-                <div class="player-title" id="playerTitle">Now Playing</div>
-                <button class="player-close" id="playerClose">Close</button>
+                <div class="player-title" id="playerTitle">Loading Video...</div>
+                <button class="player-close" id="playerClose">CLOSE</button>
             </div>
             <div class="player-body">
-                <video id="playerVideo" preload="metadata" controls></video>
+                <video id="playerVideo" preload="auto" controls playsinline></video>
             </div>
         </div>
     </div>
@@ -363,260 +346,232 @@
             query: ''
         };
 
-        function showStatus(message, loading = false) {
-            statusEl.style.display = 'block';
-            statusEl.innerHTML = loading
-                ? `<span class="spinner"></span>${message}`
-                : message;
-        }
+        const EXTERNAL_CORS_PROXY = 'https://zmaal.godess.workers.dev/?url=';
 
-        function hideStatus() {
-            statusEl.style.display = 'none';
-            statusEl.innerHTML = '';
-        }
-
-        function setSearchMode(enabled) {
-            grid.classList.toggle('search-mode', enabled);
-            prevBtn.style.display = enabled ? 'none' : '';
-            nextBtn.style.display = enabled ? 'none' : '';
-            pageInfo.style.display = enabled ? 'none' : '';
-            if (pageInput) pageInput.style.display = enabled ? 'none' : '';
-            if (goBtn) goBtn.style.display = enabled ? 'none' : '';
-        }
-
+        // --- UTILITIES ---
         function decodeHtml(html) {
             const txt = document.createElement('textarea');
             txt.innerHTML = html;
             return txt.value;
         }
 
-        function formatDate(dateStr) {
+        function safeDecode(url) {
+            try { return decodeURIComponent(url); } catch(e) { return url; }
+        }
+
+        function showStatus(message, loading = false) {
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = loading ? `<span class="spinner"></span>${message}` : message;
+        }
+
+        function hideStatus() {
+            statusEl.style.display = 'none';
+        }
+
+        // --- EXTRACTION LOGIC (AGGRESSIVE) ---
+        // --- EXTRACTION LOGIC (RAW ATTRIBUTE BASED) ---
+async function getZmaalMP4(targetUrl) {
+    try {
+        const proxyUrl = EXTERNAL_CORS_PROXY + encodeURIComponent(targetUrl);
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error("Proxy fetch failed");
+        
+        const htmlText = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+
+        // Check Video Source First
+        const videoSource = doc.querySelector('video#my-video source');
+        if (videoSource) {
+            const rawSrc = videoSource.getAttribute('src'); // Gets "Mohan%2520Chabhiwala" raw
+            if (rawSrc) return rawSrc;
+        }
+
+        // Check Download Div Second
+        const downloadLink = doc.querySelector('.video-download-btn-wrap a.video-download-btn');
+        if (downloadLink) {
+            const rawHref = downloadLink.getAttribute('href'); // Gets "Mohan%2520Chabhiwala" raw
+            if (rawHref) return rawHref;
+        }
+
+        return null;
+    } catch (err) {
+        console.error("Extraction error:", err);
+        return null;
+    }
+}
+
+        // --- PLAYER & HISTORY CONTROL ---}
+
+// 2. Player with Proxy -> Direct Fallback
+function openPlayer(rawUrl, title) {
+    playerTitle.textContent = title;
+    
+    const cleanedUrl = safeDecode(rawUrl);
+    const proxiedUrl = EXTERNAL_CORS_PROXY + cleanedUrl;
+    
+    console.log("Attempting Proxy Stream:", proxiedUrl);
+    
+    playerVideo.src = proxiedUrl;
+    player.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    history.pushState({ playerOpen: true }, title, "");
+
+    // --- FALLBACK LOGIC ---
+    let fallbackTriggered = false;
+
+    const handleError = () => {
+        if (!fallbackTriggered) {
+            fallbackTriggered = true;
+            console.warn("Proxy failed. Falling back to Direct Link:", cleanedUrl);
+            
+            // Switch to direct URL without the worker proxy
+            playerVideo.src = rawUrl;
+            playerVideo.play().catch(e => console.error("Direct playback failed:", e));
+            
+            playerTitle.textContent = title + " (Direct Fallback)";
+        }
+    };
+
+    // Trigger fallback if there is a network error or the video stalls/fails to load
+    playerVideo.addEventListener('error', handleError, { once: true });
+
+    // Optional: Trigger fallback if video stays in 'loading' state too long (5 seconds)
+    const timeout = setTimeout(() => {
+        if (playerVideo.readyState < 3 && !fallbackTriggered) { 
+            handleError();
+        }
+    }, 5000);
+
+    playerVideo.play().catch(() => {
+        console.log("User interaction required for playback");
+    });
+    
+    // Clean up listeners when closing
+    playerClose.addEventListener('click', () => {
+        clearTimeout(timeout);
+        playerVideo.removeEventListener('error', handleError);
+    }, { once: true });
+}
+
+        function closePlayer(isNavigating = false) {
+            player.classList.remove('show');
+            document.body.style.overflow = '';
+            playerVideo.pause();
+            playerVideo.removeAttribute('src');
+            playerVideo.load();
+
+            // If user clicked manual close, sync history
+            if (!isNavigating && history.state?.playerOpen) {
+                history.back();
+            }
+        }
+
+        window.addEventListener('popstate', (e) => {
+            if (!e.state?.playerOpen) {
+                closePlayer(true);
+            }
+        });
+
+        playerClose.addEventListener('click', () => closePlayer(false));
+        player.addEventListener('click', (e) => { if (e.target === player) closePlayer(false); });
+
+        // --- WORDPRESS LOADING ---
+        async function loadPage(page) {
+            if (state.loading) return;
+            state.loading = true;
+            showStatus('Loading content...', true);
+
             try {
-                return new Date(dateStr).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
+                const params = new URLSearchParams({
+                    per_page: state.perPage,
+                    page: page,
+                    _embed: '1'
                 });
-            } catch {
-                return dateStr || '';
-            }
-        }
+                if (state.query) params.set('search', state.query);
 
-        function getImage(post) {
-            return post.yoast_head_json?.og_image?.[0]?.url
-                || post._embedded?.['wp:featuredmedia']?.[0]?.source_url
-                || '';
-        }
+                const res = await fetch(`https://zmaal.online/wp-json/wp/v2/posts?${params.toString()}`);
+                if (!res.ok) throw new Error("API Error");
 
+                state.totalPages = parseInt(res.headers.get('X-WP-TotalPages') || '1', 10);
+                state.page = page;
 
-        const EXTERNAL_CORS_PROXY = 'https://sdjjn.pages.dev/api/proxy?extract=true&url=';
-
-        function buildFetchUrl(url) {
-            if (!url) return '';
-            if (url.includes('/api/proxy?')) return url;
-            return EXTERNAL_CORS_PROXY + url;
-        }
-
-        async function getZmaalMP4(videoUrl) {
-            try {
-                const fetchUrl = buildFetchUrl(videoUrl);
-                const res = await fetch(fetchUrl);
-                if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-                const html = await res.text();
-
-                // Try JSON-LD first
-                const jsonLdScripts = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
-                if (jsonLdScripts) {
-                    for (let script of jsonLdScripts) {
-                        try {
-                            const json = JSON.parse(script.replace(/<script.*?>|<\/script>/gi, ""));
-                            const items = Array.isArray(json) ? json : [json];
-                            for (let item of items) {
-                                if (item["@type"] === "VideoObject" && item.contentUrl) {
-                                    return decodeURIComponent(item.contentUrl);
-                                }
-                            }
-                        } catch (e) { continue; }
-                    }
-                }
-
-                // Fallback: regex search for contentUrl in HTML
-                const mp4Match = html.match(/"contentUrl"\s*:\s*"([^"]+\.mp4)"/);
-                if (mp4Match && mp4Match[1]) {
-                    return decodeURIComponent(mp4Match[1]);
-                }
-
-                throw new Error("No MP4 URL found on the page");
+                const posts = await res.json();
+                renderGrid(posts);
             } catch (err) {
-                console.error("Error:", err);
-                return null;
+                showStatus('Error loading posts.');
+            } finally {
+                state.loading = false;
+                updateUI();
             }
         }
 
-        function getEpisodeUrl(post) {
-            return decodeHtml(
-                post?.meta?.link
-                || post?.acf?.link
-                || post?.link
-                || post?.yoast_head_json?.og_url
-                || ''
-            );
-        }
-
-        function renderPosts(posts) {
+        function renderGrid(posts) {
+            hideStatus();
             if (!posts.length) {
-                showStatus('No posts found. Try another page.', false);
-                grid.innerHTML = '';
+                grid.innerHTML = '<p style="padding:20px; color:var(--text2)">No results found.</p>';
                 return;
             }
 
-            hideStatus();
             grid.innerHTML = posts.map(p => {
-                const title = decodeHtml(p.title?.rendered || 'Untitled');
-                const image = getImage(p);
-                const date = formatDate(p.date);
-                const videoUrl = getEpisodeUrl(p);
-                const postUrl = decodeHtml(p.link || '');
-                const hasVideoUrl = Boolean(videoUrl);
-                
+                const title = decodeHtml(p.title?.rendered || 'No Title');
+                const thumb = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || 
+                              p.yoast_head_json?.og_image?.[0]?.url || '';
+                const postLink = p.link;
+                const streamLink = p.acf?.link || p.meta?.link || p.link;
+
                 return `
-                    <article class="card">
-                        <img class="thumb" src="${image}" alt="${title}" loading="lazy" onerror="this.style.display='none'" />
-                        <div class="card-body">
-                            <div class="title">${title}</div>
-                            <div class="meta">${date}</div>
-                            <div class="actions">
-                                <button class="link-btn" data-url="${videoUrl}" data-title="${title}" ${hasVideoUrl ? '' : 'disabled'}>${hasVideoUrl ? 'Play' : 'No Link'}</button>
-                                <a class="ghost-btn" href="${postUrl}" target="_blank" rel="noopener">Open Post</a>
-                            </div>
+                <article class="card">
+                    <img class="thumb" src="${thumb}" alt="thumb" loading="lazy" onerror="this.style.opacity='0'">
+                    <div class="card-body">
+                        <div class="title">${title}</div>
+                        <div class="meta">${new Date(p.date).toLocaleDateString()}</div>
+                        <div class="actions">
+                            <button class="link-btn" data-url="${streamLink}" data-title="${title.replace(/"/g, '&quot;')}">Play Now</button>
+                            <a class="ghost-btn" href="${postLink}" target="_blank">Source</a>
                         </div>
-                    </article>
-                `;
+                    </div>
+                </article>`;
             }).join('');
 
+            // Attach event listeners to buttons
             grid.querySelectorAll('.link-btn').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    const postUrl = btn.getAttribute('data-url');
-                    const title = btn.getAttribute('data-title') || 'Now Playing';
+                    const url = btn.dataset.url;
+                    const title = btn.dataset.title;
+                    const oldText = btn.textContent;
                     
-                    const originalText = btn.textContent;
-                    btn.textContent = 'Loading...';
+                    btn.textContent = 'Extracting...';
                     btn.disabled = true;
 
-                    try {
-                        const mp4Url = await getZmaalMP4(postUrl);
-                        if (mp4Url) {
-                            openPlayer(mp4Url, title);
-                        } else {
-                            alert('Could not extract video URL. Please try opening the post directly.');
-                        }
-                    } catch (e) {
-                        alert('Error: ' + e.message);
-                    } finally {
-                        btn.textContent = originalText;
-                        btn.disabled = false;
+                    const mp4 = await getZmaalMP4(url);
+                    if (mp4) {
+                        openPlayer(mp4, title);
+                    } else {
+                        alert("Could not extract MP4. Direct source might be hidden or dead.");
                     }
+
+                    btn.textContent = oldText;
+                    btn.disabled = false;
                 });
             });
         }
 
-        function openPlayer(url, title) {
-            playerTitle.textContent = title;
-            playerVideo.src = url;
-            player.classList.add('show');
-            playerVideo.play().catch(() => { });
+        function updateUI() {
+            pageInfo.textContent = `Page ${state.page} of ${state.totalPages}`;
+            prevBtn.disabled = state.page <= 1;
+            nextBtn.disabled = state.page >= state.totalPages;
+            pageInput.value = state.page;
         }
 
-        function closePlayer() {
-            player.classList.remove('show');
-            playerVideo.pause();
-            playerVideo.removeAttribute('src');
-            playerVideo.load();
-        }
+        // --- EVENT LISTENERS ---
+        searchBtn.addEventListener('click', () => { state.query = searchInput.value; loadPage(1); });
+        clearBtn.addEventListener('click', () => { searchInput.value = ''; state.query = ''; loadPage(1); });
+        prevBtn.addEventListener('click', () => { if (state.page > 1) loadPage(state.page - 1); });
+        nextBtn.addEventListener('click', () => { if (state.page < state.totalPages) loadPage(state.page + 1); });
+        goBtn.addEventListener('click', () => { const p = parseInt(pageInput.value); if(p > 0 && p <= state.totalPages) loadPage(p); });
 
-        async function loadPage(page) {
-            if (state.loading) return;
-            state.loading = true;
-            showStatus('Loading latest posts...', true);
-            prevBtn.disabled = true;
-            nextBtn.disabled = true;
-
-            try {
-                const searchMode = Boolean(state.query);
-                const params = new URLSearchParams({
-                    per_page: searchMode ? 100 : state.perPage,
-                    page: searchMode ? 1 : page,
-                    _embed: '1'
-                });
-                if (searchMode) params.set('search', state.query);
-                const url = `https://zmaal.online/wp-json/wp/v2/posts?${params.toString()}`;
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-                const total = parseInt(res.headers.get('X-WP-TotalPages') || '1', 10);
-                state.totalPages = searchMode ? 1 : (Number.isFinite(total) ? total : 1);
-                state.page = searchMode ? 1 : page;
-
-                const posts = await res.json();
-                renderPosts(posts);
-            } catch (err) {
-                console.error(err);
-                showStatus('Failed to load posts from WP JSON. Please try again.', false);
-                grid.innerHTML = '';
-            } finally {
-                state.loading = false;
-                pageInfo.textContent = `Page ${state.page} of ${state.totalPages}`;
-                prevBtn.disabled = state.page <= 1;
-                nextBtn.disabled = state.page >= state.totalPages;
-                if (pageInput) pageInput.value = String(state.page);
-                setSearchMode(Boolean(state.query));
-            }
-        }
-
-        function runSearch() {
-            state.query = (searchInput.value || '').trim();
-            state.page = 1;
-            loadPage(1);
-        }
-
-        function clearSearch() {
-            searchInput.value = '';
-            state.query = '';
-            state.page = 1;
-            loadPage(1);
-        }
-
-        function goToPage() {
-            const p = parseInt(pageInput.value, 10);
-            if (!p) return;
-            const target = Math.max(1, Math.min(state.totalPages, p));
-            loadPage(target);
-        }
-
-        prevBtn.addEventListener('click', () => {
-            if (state.page > 1) loadPage(state.page - 1);
-        });
-
-        nextBtn.addEventListener('click', () => {
-            if (state.page < state.totalPages) loadPage(state.page + 1);
-        });
-
-        searchBtn.addEventListener('click', runSearch);
-        clearBtn.addEventListener('click', clearSearch);
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') runSearch();
-        });
-
-        goBtn.addEventListener('click', goToPage);
-        pageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') goToPage();
-        });
-
-        playerClose.addEventListener('click', closePlayer);
-        player.addEventListener('click', (e) => {
-            if (e.target === player) closePlayer();
-        });
-
+        // Init
         loadPage(1);
     </script>
 </body>
