@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camraja – Lulu Extract Player Added</title>
+<title>Camraja – Fixed Lulu Extraction</title>
 
 <style>
 :root{
@@ -14,11 +14,12 @@
   --accent:#22c55e;
   --accent2:#ffffff;
   --extract:#38bdf8;
+  --danger:#e11d48;
 }
 *{box-sizing:border-box}
 body{
   margin:0;
-  font-family:system-ui;
+  font-family:system-ui,sans-serif;
   background:var(--bg);
   color:var(--text);
 }
@@ -37,7 +38,6 @@ header input{
   font-size:15px;
 }
 
-/* ===== LIST PAGE ===== */
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
@@ -60,7 +60,6 @@ header input{
   font-size:14px;
 }
 
-/* ===== PAGINATION ===== */
 .pagination{
   display:flex;
   flex-wrap:wrap;
@@ -76,10 +75,14 @@ header input{
   background:#1e293b;
   color:#fff;
 }
-.pagination button.active{background:var(--accent2);color:#000}
-.pagination input{width:70px}
+.pagination button.active{
+  background:var(--accent2);
+  color:#000;
+}
+.pagination input{
+  width:70px;
+}
 
-/* ===== POST PAGE ===== */
 #postView{
   display:none;
   max-width:900px;
@@ -137,11 +140,10 @@ header input{
   color:#082f49;
 }
 .quality-btn{
-  background:#e11d48;
+  background:var(--danger);
   color:#fff;
 }
 
-/* Custom Player */
 .player-shell{
   margin-top:14px;
   background:#020617;
@@ -158,6 +160,7 @@ header input{
   margin-top:10px;
   color:var(--muted);
   font-size:13px;
+  white-space:pre-wrap;
 }
 .player-actions{
   display:flex;
@@ -166,7 +169,6 @@ header input{
   margin-top:10px;
 }
 
-/* Old iframe player */
 .player-wrapper{
   margin-top:14px;
 }
@@ -177,7 +179,6 @@ header input{
   border-radius:12px;
 }
 
-/* Image gallery */
 .image-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
@@ -222,80 +223,128 @@ header input{
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-const API='https://camraja.com/wp-json/wp/v2/posts?_embed&per_page=10';
-const PROXY='https://allinone.ascalrack.workers.dev/?url=';
+const API = 'https://camraja.com/wp-json/wp/v2/posts?_embed&per_page=10';
+const PROXY = 'https://allinone.ascalrack.workers.dev/?url=';
 
-let page=1;
-let search='';
-let totalPages=1;
+let page = 1;
+let search = '';
+let totalPages = 1;
 
-let currentSources=[];
-let hlsInstance=null;
+let currentSources = [];
+let hlsInstance = null;
 
-/* ===== HELPERS ===== */
-const decode = h => String(h || '')
+/* =========================
+   HELPERS
+========================= */
+const decodeHtml = h => String(h || '')
   .replace(/&lt;/g,'<')
   .replace(/&gt;/g,'>')
   .replace(/&quot;/g,'"')
   .replace(/&#039;/g,"'")
   .replace(/&amp;/g,'&');
 
-const clean = u => String(u || '').split(/[?#]/)[0];
+function cleanUrl(u){
+  return String(u || '').trim();
+}
 
-/* ===== SOURCE NAME ===== */
+function deSlash(u){
+  return String(u || '')
+    .replace(/\\u0026/g, '&')
+    .replace(/\\\//g, '/')
+    .replace(/\\\\/g, '\\');
+}
+
+function uniqueByFile(arr){
+  const out = [];
+  const seen = new Set();
+  for(const item of arr){
+    const key = item.file;
+    if(!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function absUrl(url, base){
+  try{
+    return new URL(url, base).href;
+  }catch{
+    return url;
+  }
+}
+
+function isLuluLink(u){
+  return /luluvid|luluvdoo|vidnest|lulu/i.test(String(u || ''));
+}
+
 function sourceName(u){
   if(/krakenfiles/i.test(u)) return 'KrakenFiles';
   if(/mixdrop|mxdrop/i.test(u)) return 'MixDrop';
-  if(/luluvid|luluvdoo|lulu|vidnest/i.test(u)) return 'Lulu';
+  if(/luluvid|luluvdoo|vidnest|lulu/i.test(u)) return 'Lulu';
   if(/voe\./i.test(u)) return 'VOE';
   if(/streamtape/i.test(u)) return 'Streamtape';
   return 'Stream';
 }
 
-/* ===== LULU LINK CHECK ===== */
-function isLuluLink(u){
-  return /luluvid|luluvdoo|vidnest|lulu/i.test(u || '');
-}
+function normalizeLuluUrl(u){
+  u = cleanUrl(u);
 
-/* ===== EMBED NORMALIZE ===== */
-function normalize(u){
-  let m;
-  if(m=u.match(/krakenfiles\.com\/view\/([^\/]+)/i)) return `https://krakenfiles.com/embed-video/${m[1]}`;
-  if(m=u.match(/mxdrop\.to\/f\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
-  if(m=u.match(/mixdrop\.co\/e\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
-  if(m=u.match(/luluvid\.com\/([a-z0-9]+)/i)) return `https://luluvid.com/embed/${m[1]}`;
-  if(m=u.match(/voe\.(sx|uno|cx)\/([a-z0-9]+)/i)) return `https://voe.sx/e/${m[2]}`;
-  if(m=u.match(/streamtape\.com\/e\/([^\/]+)/i)) return `https://streamtape.com/e/${m[1]}`;
-  return null;
-}
-
-/* ===== RESOLVE VIDEO FOR IFRAME PLAY ===== */
-async function resolveVideo(u){
-  const direct=normalize(u);
-  if(direct) return direct;
-
-  try{
-    const r=await fetch(PROXY + encodeURIComponent(u));
-    const t=decode(await r.text());
-    const m=t.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-    return m ? clean(m[1]) : null;
-  }catch(e){
-    return null;
+  let m = u.match(/https?:\/\/(?:www\.)?(luluvid\.com|luluvdoo\.com|vidnest\.net|vidnest\.in|vidnest\.org)\/(?:d|e|v|embed)?\/?([a-zA-Z0-9]+)/i);
+  if(m){
+    return `https://${m[1]}/embed/${m[2]}`;
   }
+
+  m = u.match(/https?:\/\/(?:www\.)?(luluvid\.com|luluvdoo\.com|vidnest\.net|vidnest\.in|vidnest\.org)\/([a-zA-Z0-9]+)$/i);
+  if(m){
+    return `https://${m[1]}/embed/${m[2]}`;
+  }
+
+  return u;
 }
 
-/* ===== BASIC PROXY FETCH ===== */
 async function proxyFetch(url){
   const res = await fetch(PROXY + encodeURIComponent(url));
   return await res.text();
 }
 
-/* ===== EXTRACT LINKS ===== */
+/* =========================
+   NORMAL EMBED PLAYER
+========================= */
+function normalize(u){
+  let m;
+  if(m = u.match(/krakenfiles\.com\/view\/([^\/]+)/i)) return `https://krakenfiles.com/embed-video/${m[1]}`;
+  if(m = u.match(/mxdrop\.to\/f\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
+  if(m = u.match(/mixdrop\.co\/e\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
+  if(m = u.match(/luluvid\.com\/([a-z0-9]+)/i)) return `https://luluvid.com/embed/${m[1]}`;
+  if(m = u.match(/luluvdoo\.com\/([a-z0-9]+)/i)) return `https://luluvdoo.com/embed/${m[1]}`;
+  if(m = u.match(/voe\.(sx|uno|cx)\/([a-z0-9]+)/i)) return `https://voe.sx/e/${m[2]}`;
+  if(m = u.match(/streamtape\.com\/e\/([^\/]+)/i)) return `https://streamtape.com/e/${m[1]}`;
+  return null;
+}
+
+async function resolveVideo(u){
+  const direct = normalize(u);
+  if(direct) return direct;
+
+  try{
+    const r = await fetch(PROXY + encodeURIComponent(u));
+    const t = decodeHtml(await r.text());
+    const m = t.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    return m ? cleanUrl(m[1]) : null;
+  }catch{
+    return null;
+  }
+}
+
+/* =========================
+   CONTENT EXTRACTION
+========================= */
 function extractStreams(html){
-  const urls = [...decode(html).matchAll(/https?:\/\/[^\s"'<>]+/gi)]
-    .map(m => clean(m[0]))
+  const urls = [...decodeHtml(html).matchAll(/https?:\/\/[^\s"'<>]+/gi)]
+    .map(m => cleanUrl(m[0]))
     .filter(u =>
-      !u.match(/\.(jpg|png|gif|webp|jpeg)$/i) &&
+      !u.match(/\.(jpg|jpeg|png|gif|webp)$/i) &&
       !u.includes('imagetape.com')
     );
 
@@ -304,14 +353,15 @@ function extractStreams(html){
 
 function extractImages(html){
   const doc = document.createElement('div');
-  doc.innerHTML = decode(html);
-
+  doc.innerHTML = decodeHtml(html);
   return [...doc.querySelectorAll('img')]
-    .map(i => clean(i.src))
+    .map(i => cleanUrl(i.src))
     .filter(Boolean);
 }
 
-/* ===== CUSTOM PLAYER UI ===== */
+/* =========================
+   PLAYER
+========================= */
 function ensureVideoPlayerUI(){
   postPlayer.innerHTML = `
     <div class="player-shell">
@@ -323,128 +373,203 @@ function ensureVideoPlayerUI(){
 }
 
 function setPlayerStatus(msg){
-  const box = document.getElementById('customPlayerStatus');
-  if(box) box.textContent = msg;
+  const el = document.getElementById('customPlayerStatus');
+  if(el) el.textContent = msg;
 }
 
-/* ===== CUSTOM PLAYER STREAM ===== */
-function playCustomStream(url){
-  ensureVideoPlayerUI();
-
-  const player = document.getElementById('customVideoPlayer');
-
+function destroyHls(){
   if(hlsInstance){
     hlsInstance.destroy();
     hlsInstance = null;
   }
+}
 
-  let finalUrl = url;
+function playCustomStream(url){
+  ensureVideoPlayerUI();
 
-  if(!finalUrl.startsWith(PROXY) && finalUrl.includes('.m3u8')){
+  const player = document.getElementById('customVideoPlayer');
+  destroyHls();
+
+  let finalUrl = cleanUrl(url);
+
+  if(!finalUrl.startsWith(PROXY) && /\.m3u8(\?|$)/i.test(finalUrl)){
     finalUrl = PROXY + encodeURIComponent(finalUrl);
   }
 
-  if(finalUrl.includes('.m3u8')){
+  if(/\.m3u8(\?|$)/i.test(finalUrl)){
     if(window.Hls && Hls.isSupported()){
       hlsInstance = new Hls();
       hlsInstance.loadSource(finalUrl);
       hlsInstance.attachMedia(player);
       hlsInstance.on(Hls.Events.MANIFEST_PARSED, function(){
-        player.play().catch(()=>{});
+        player.play().catch(() => {});
+      });
+      hlsInstance.on(Hls.Events.ERROR, function(event, data){
+        console.error('HLS error:', data);
       });
     }else{
       player.src = finalUrl;
-      player.play().catch(()=>{});
+      player.play().catch(() => {});
     }
   }else{
     player.src = finalUrl;
-    player.play().catch(()=>{});
+    player.play().catch(() => {});
   }
 
-  setPlayerStatus('Playing extracted stream.');
+  setPlayerStatus(`Playing extracted stream:\n${finalUrl}`);
 }
 
-/* ===== QUALITY BUTTONS ===== */
 function renderQualityButtons(){
   ensureVideoPlayerUI();
-
   const box = document.getElementById('customQualityBox');
   box.innerHTML = '';
 
-  currentSources.forEach(source => {
+  currentSources.forEach(src => {
     const btn = document.createElement('button');
     btn.className = 'quality-btn';
-    btn.textContent = source.label || 'auto';
-    btn.onclick = () => playCustomStream(source.file);
+    btn.textContent = src.label || 'auto';
+    btn.onclick = () => playCustomStream(src.file);
     box.appendChild(btn);
   });
 }
 
-/* ===== JWPLAYER EXTRACTION ===== */
-function extractJW(html){
-  const fileRegex = /file\s*:\s*"([^"]+)"/g;
-  const labelRegex = /label\s*:\s*"([^"]+)"/g;
+/* =========================
+   LULU EXTRACTION
+========================= */
+function parseDirectMediaUrls(html, baseUrl){
+  const out = [];
 
-  const files = [...html.matchAll(fileRegex)];
-  const labels = [...html.matchAll(labelRegex)];
+  const patterns = [
+    /https?:\/\/[^\s"'<>\\]+\.m3u8(?:\?[^\s"'<>]*)?/gi,
+    /https?:\/\/[^\s"'<>\\]+\.mp4(?:\?[^\s"'<>]*)?/gi,
+    /https?:\\\/\\\/[^\s"'<>]+\.m3u8(?:\?[^\s"'<>]*)?/gi,
+    /https?:\\\/\\\/[^\s"'<>]+\.mp4(?:\?[^\s"'<>]*)?/gi
+  ];
 
-  currentSources = [];
-
-  for(let i = 0; i < files.length; i++){
-    let streamURL = files[i][1];
-
-    if(streamURL.includes('lulu') || streamURL.includes('vidnest')){
-      streamURL = PROXY + encodeURIComponent(streamURL);
+  for(const regex of patterns){
+    const matches = html.match(regex) || [];
+    for(let u of matches){
+      u = deSlash(u);
+      out.push({
+        file: cleanUrl(u),
+        label: /\.m3u8/i.test(u) ? 'HLS' : 'MP4'
+      });
     }
+  }
 
-    currentSources.push({
-      file: streamURL,
-      label: labels[i] ? labels[i][1] : 'auto'
+  const fileMatches = [...html.matchAll(/file\s*:\s*["']([^"']+)["']/gi)];
+  for(const m of fileMatches){
+    let u = deSlash(m[1]);
+    u = absUrl(u, baseUrl);
+    out.push({ file: cleanUrl(u), label: 'auto' });
+  }
+
+  const sourcesArray = [...html.matchAll(/sources\s*:\s*\[([\s\S]*?)\]/gi)];
+  for(const block of sourcesArray){
+    const inner = block[1];
+
+    const srcMatches = [...inner.matchAll(/(?:file|src)\s*:\s*["']([^"']+)["']/gi)];
+    const labelMatches = [...inner.matchAll(/label\s*:\s*["']([^"']+)["']/gi)];
+
+    srcMatches.forEach((sm, idx) => {
+      let u = deSlash(sm[1]);
+      u = absUrl(u, baseUrl);
+      out.push({
+        file: cleanUrl(u),
+        label: labelMatches[idx] ? labelMatches[idx][1] : 'auto'
+      });
     });
   }
 
-  if(currentSources.length > 0){
-    renderQualityButtons();
-    playCustomStream(currentSources[0].file);
-    return true;
-  }
-
-  return false;
+  return uniqueByFile(out).filter(x => /^https?:/i.test(x.file));
 }
 
-/* ===== LULU EXTRACT FLOW ===== */
+function parseIframeSrcs(html, baseUrl){
+  const frames = [];
+
+  const rx = /<iframe[^>]+src=["']([^"']+)["']/gi;
+  let m;
+  while((m = rx.exec(html)) !== null){
+    frames.push(absUrl(deSlash(m[1]), baseUrl));
+  }
+
+  return [...new Set(frames)];
+}
+
+async function tryExtractFromPage(url){
+  const normalizedUrl = normalizeLuluUrl(url);
+  const html = decodeHtml(await proxyFetch(normalizedUrl));
+
+  let found = parseDirectMediaUrls(html, normalizedUrl);
+  if(found.length) return found;
+
+  const frames = parseIframeSrcs(html, normalizedUrl);
+
+  for(const frame of frames){
+    try{
+      const frameHtml = decodeHtml(await proxyFetch(frame));
+      found = parseDirectMediaUrls(frameHtml, frame);
+      if(found.length) return found;
+    }catch(err){
+      console.error('Frame parse failed:', err);
+    }
+  }
+
+  return [];
+}
+
 async function extractLuluStream(link, buttonEl){
   try{
     if(buttonEl) buttonEl.textContent = 'Extracting...';
 
-    const html = await proxyFetch(link);
-    const ok = extractJW(html);
-
-    if(!ok){
-      ensureVideoPlayerUI();
-      setPlayerStatus('No stream found in Lulu page.');
-    }
-  }catch(err){
+    currentSources = [];
     ensureVideoPlayerUI();
-    setPlayerStatus('Extraction failed.');
+    setPlayerStatus(`Trying extraction...\n${link}`);
+
+    let results = await tryExtractFromPage(link);
+
+    if(!results.length){
+      const normalized = normalizeLuluUrl(link);
+      if(normalized !== link){
+        results = await tryExtractFromPage(normalized);
+      }
+    }
+
+    if(!results.length){
+      setPlayerStatus('Extraction failed: no playable source found.');
+      return;
+    }
+
+    currentSources = uniqueByFile(results).map((item, index) => ({
+      file: item.file,
+      label: item.label || `Source ${index + 1}`
+    }));
+
+    renderQualityButtons();
+    playCustomStream(currentSources[0].file);
+  }catch(err){
     console.error(err);
+    ensureVideoPlayerUI();
+    setPlayerStatus('Extraction failed with error. Check console for details.');
   }finally{
     if(buttonEl) buttonEl.textContent = 'Extract';
   }
 }
 
-/* ===== LOAD POSTS ===== */
+/* =========================
+   POSTS
+========================= */
 async function loadPosts(){
-  posts.innerHTML='Loading…';
+  posts.innerHTML = 'Loading…';
 
   try{
     const r = await fetch(`${API}&page=${page}&search=${encodeURIComponent(search)}`);
     totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1, 10);
-    const d = await r.json();
+    const data = await r.json();
 
-    posts.innerHTML='';
+    posts.innerHTML = '';
 
-    d.forEach(p => {
+    data.forEach(p => {
       const img = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
       const c = document.createElement('div');
       c.className = 'card';
@@ -456,21 +581,21 @@ async function loadPosts(){
     });
 
     renderPagination();
-  }catch(e){
+  }catch(err){
+    console.error(err);
     posts.innerHTML = 'Failed to load posts.';
     pagination.innerHTML = '';
   }
 }
 
-/* ===== PAGINATION ===== */
 function renderPagination(){
-  pagination.innerHTML='';
+  pagination.innerHTML = '';
 
-  const add = (text, onClick, active=false) => {
+  const add = (text, fn, active=false) => {
     const b = document.createElement('button');
     b.textContent = text;
     if(active) b.classList.add('active');
-    b.onclick = onClick;
+    b.onclick = fn;
     pagination.appendChild(b);
   };
 
@@ -496,9 +621,9 @@ function renderPagination(){
   });
 
   const input = document.createElement('input');
-  input.type='number';
-  input.min=1;
-  input.max=totalPages;
+  input.type = 'number';
+  input.min = 1;
+  input.max = totalPages;
   pagination.appendChild(input);
 
   add('Go', () => {
@@ -510,10 +635,9 @@ function renderPagination(){
   });
 }
 
-/* ===== OPEN POST ===== */
 function openPost(p){
-  listView.style.display='none';
-  postView.style.display='block';
+  listView.style.display = 'none';
+  postView.style.display = 'block';
 
   postThumb.src = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
   postTitle.innerHTML = p.title.rendered;
@@ -522,13 +646,14 @@ function openPost(p){
   postMeta.textContent = `Posted on ${date.toDateString()} at ${date.toLocaleTimeString()}`;
 
   const cleanText = document.createElement('div');
-  cleanText.innerHTML = decode(p.content.rendered);
+  cleanText.innerHTML = decodeHtml(p.content.rendered);
   cleanText.querySelectorAll('iframe,img,script').forEach(e => e.remove());
   postContent.innerHTML = cleanText.innerHTML;
 
   postStreams.innerHTML = '';
   postPlayer.innerHTML = '';
   currentSources = [];
+  destroyHls();
 
   const streamLinks = extractStreams(p.content.rendered);
 
@@ -548,9 +673,7 @@ function openPost(p){
     playBtn.textContent = `Play (${sourceName(u)})`;
     playBtn.onclick = async () => {
       playBtn.textContent = 'Loading...';
-
       const src = await resolveVideo(u);
-
       playBtn.textContent = `Play (${sourceName(u)})`;
 
       postPlayer.innerHTML = src
@@ -581,24 +704,18 @@ function openPost(p){
   });
 }
 
-/* ===== NAV ===== */
 function backToList(){
-  if(hlsInstance){
-    hlsInstance.destroy();
-    hlsInstance = null;
-  }
-  postView.style.display='none';
-  listView.style.display='block';
+  destroyHls();
+  postView.style.display = 'none';
+  listView.style.display = 'block';
 }
 
-/* ===== SEARCH ===== */
 searchInput.oninput = e => {
   search = e.target.value;
   page = 1;
   loadPosts();
 };
 
-/* ===== START ===== */
 loadPosts();
 </script>
 
