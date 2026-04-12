@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camraja – Lulu Extract Player Added</title>
+
+<style>
+:root{
+  --bg:#000000;
+  --card:#020617;
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+  --accent:#22c55e;
+  --accent2:#ffffff;
+  --extract:#38bdf8;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui;
+  background:var(--bg);
+  color:var(--text);
+}
+header{
+  padding:14px;
+  position:sticky;
+  top:0;
+  background:#020617;
+  z-index:10;
+}
+header input{
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  border:none;
+  font-size:15px;
+}
+
+/* ===== LIST PAGE ===== */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:16px;
+  padding:16px;
+}
+.card{
+  background:var(--card);
+  border-radius:12px;
+  overflow:hidden;
+  cursor:pointer;
+}
+.thumb{
+  width:100%;
+  height:180px;
+  object-fit:cover;
+}
+.card .title{
+  padding:10px;
+  font-size:14px;
+}
+
+/* ===== PAGINATION ===== */
+.pagination{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  justify-content:center;
+  padding:16px;
+}
+.pagination button,
+.pagination input{
+  padding:8px 12px;
+  border-radius:6px;
+  border:none;
+  background:#1e293b;
+  color:#fff;
+}
+.pagination button.active{background:var(--accent2);color:#000}
+.pagination input{width:70px}
+
+/* ===== POST PAGE ===== */
+#postView{
+  display:none;
+  max-width:900px;
+  margin:auto;
+  padding:16px;
+}
+.back{
+  color:var(--accent2);
+  cursor:pointer;
+  margin-bottom:12px;
+}
+.post-thumb{
+  width:100%;
+  max-height:360px;
+  object-fit:cover;
+  border-radius:12px;
+}
+.post-meta{
+  font-size:13px;
+  color:var(--muted);
+  margin:6px 0 14px;
+}
+.stream-row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin:10px 0;
+  flex-wrap:wrap;
+  background:#0f172a;
+  border-radius:10px;
+  padding:10px;
+}
+.stream-row a{
+  flex:1;
+  color:var(--muted);
+  font-size:13px;
+  word-break:break-all;
+  text-decoration:none;
+}
+.play-btn,
+.extract-btn,
+.quality-btn{
+  border:none;
+  padding:8px 14px;
+  border-radius:6px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.play-btn{
+  background:var(--accent);
+  color:#022c22;
+}
+.extract-btn{
+  background:var(--extract);
+  color:#082f49;
+}
+.quality-btn{
+  background:#e11d48;
+  color:#fff;
+}
+
+/* Custom Player */
+.player-shell{
+  margin-top:14px;
+  background:#020617;
+  padding:12px;
+  border-radius:12px;
+}
+.player-shell video{
+  width:100%;
+  max-height:500px;
+  background:#000;
+  border-radius:10px;
+}
+.player-status{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:13px;
+}
+.player-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+
+/* Old iframe player */
+.player-wrapper{
+  margin-top:14px;
+}
+.player-wrapper iframe{
+  width:100%;
+  height:400px;
+  border:none;
+  border-radius:12px;
+}
+
+/* Image gallery */
+.image-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:8px;
+  margin-top:16px;
+}
+.image-grid img{
+  width:100%;
+  height:auto;
+  object-fit:contain;
+  border-radius:8px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <input id="searchInput" placeholder="Search posts…">
+</header>
+
+<div id="listView">
+  <div id="posts" class="grid"></div>
+  <div id="pagination" class="pagination"></div>
+</div>
+
+<div id="postView">
+  <div class="back" onclick="backToList()">← Back</div>
+  <img id="postThumb" class="post-thumb">
+  <h2 id="postTitle"></h2>
+  <div id="postMeta" class="post-meta"></div>
+  <div id="postContent"></div>
+
+  <h3>Downloads / Streams</h3>
+  <div id="postStreams"></div>
+
+  <div id="postPlayer"></div>
+
+  <h3>Images</h3>
+  <div id="postImages" class="image-grid"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+const API='https://camraja.com/wp-json/wp/v2/posts?_embed&per_page=10';
+const PROXY='https://allinone.ascalrack.workers.dev/?url=';
+
+let page=1;
+let search='';
+let totalPages=1;
+
+let currentSources=[];
+let hlsInstance=null;
+
+/* ===== HELPERS ===== */
+const decode = h => String(h || '')
+  .replace(/&lt;/g,'<')
+  .replace(/&gt;/g,'>')
+  .replace(/&quot;/g,'"')
+  .replace(/&#039;/g,"'")
+  .replace(/&amp;/g,'&');
+
+const clean = u => String(u || '').split(/[?#]/)[0];
+
+/* ===== SOURCE NAME ===== */
+function sourceName(u){
+  if(/krakenfiles/i.test(u)) return 'KrakenFiles';
+  if(/mixdrop|mxdrop/i.test(u)) return 'MixDrop';
+  if(/luluvid|luluvdoo|lulu|vidnest/i.test(u)) return 'Lulu';
+  if(/voe\./i.test(u)) return 'VOE';
+  if(/streamtape/i.test(u)) return 'Streamtape';
+  return 'Stream';
+}
+
+/* ===== LULU LINK CHECK ===== */
+function isLuluLink(u){
+  return /luluvid|luluvdoo|vidnest|lulu/i.test(u || '');
+}
+
+/* ===== EMBED NORMALIZE ===== */
+function normalize(u){
+  let m;
+  if(m=u.match(/krakenfiles\.com\/view\/([^\/]+)/i)) return `https://krakenfiles.com/embed-video/${m[1]}`;
+  if(m=u.match(/mxdrop\.to\/f\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
+  if(m=u.match(/mixdrop\.co\/e\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
+  if(m=u.match(/luluvid\.com\/([a-z0-9]+)/i)) return `https://luluvid.com/embed/${m[1]}`;
+  if(m=u.match(/voe\.(sx|uno|cx)\/([a-z0-9]+)/i)) return `https://voe.sx/e/${m[2]}`;
+  if(m=u.match(/streamtape\.com\/e\/([^\/]+)/i)) return `https://streamtape.com/e/${m[1]}`;
+  return null;
+}
+
+/* ===== RESOLVE VIDEO FOR IFRAME PLAY ===== */
+async function resolveVideo(u){
+  const direct=normalize(u);
+  if(direct) return direct;
+
+  try{
+    const r=await fetch(PROXY + encodeURIComponent(u));
+    const t=decode(await r.text());
+    const m=t.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    return m ? clean(m[1]) : null;
+  }catch(e){
+    return null;
+  }
+}
+
+/* ===== BASIC PROXY FETCH ===== */
+async function proxyFetch(url){
+  const res = await fetch(PROXY + encodeURIComponent(url));
+  return await res.text();
+}
+
+/* ===== EXTRACT LINKS ===== */
+function extractStreams(html){
+  const urls = [...decode(html).matchAll(/https?:\/\/[^\s"'<>]+/gi)]
+    .map(m => clean(m[0]))
+    .filter(u =>
+      !u.match(/\.(jpg|png|gif|webp|jpeg)$/i) &&
+      !u.includes('imagetape.com')
+    );
+
+  return [...new Set(urls)];
+}
+
+function extractImages(html){
+  const doc = document.createElement('div');
+  doc.innerHTML = decode(html);
+
+  return [...doc.querySelectorAll('img')]
+    .map(i => clean(i.src))
+    .filter(Boolean);
+}
+
+/* ===== CUSTOM PLAYER UI ===== */
+function ensureVideoPlayerUI(){
+  postPlayer.innerHTML = `
+    <div class="player-shell">
+      <video id="customVideoPlayer" controls playsinline></video>
+      <div id="customQualityBox" class="player-actions"></div>
+      <div id="customPlayerStatus" class="player-status">Ready.</div>
+    </div>
+  `;
+}
+
+function setPlayerStatus(msg){
+  const box = document.getElementById('customPlayerStatus');
+  if(box) box.textContent = msg;
+}
+
+/* ===== CUSTOM PLAYER STREAM ===== */
+function playCustomStream(url){
+  ensureVideoPlayerUI();
+
+  const player = document.getElementById('customVideoPlayer');
+
+  if(hlsInstance){
+    hlsInstance.destroy();
+    hlsInstance = null;
+  }
+
+  let finalUrl = url;
+
+  if(!finalUrl.startsWith(PROXY) && finalUrl.includes('.m3u8')){
+    finalUrl = PROXY + encodeURIComponent(finalUrl);
+  }
+
+  if(finalUrl.includes('.m3u8')){
+    if(window.Hls && Hls.isSupported()){
+      hlsInstance = new Hls();
+      hlsInstance.loadSource(finalUrl);
+      hlsInstance.attachMedia(player);
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, function(){
+        player.play().catch(()=>{});
+      });
+    }else{
+      player.src = finalUrl;
+      player.play().catch(()=>{});
+    }
+  }else{
+    player.src = finalUrl;
+    player.play().catch(()=>{});
+  }
+
+  setPlayerStatus('Playing extracted stream.');
+}
+
+/* ===== QUALITY BUTTONS ===== */
+function renderQualityButtons(){
+  ensureVideoPlayerUI();
+
+  const box = document.getElementById('customQualityBox');
+  box.innerHTML = '';
+
+  currentSources.forEach(source => {
+    const btn = document.createElement('button');
+    btn.className = 'quality-btn';
+    btn.textContent = source.label || 'auto';
+    btn.onclick = () => playCustomStream(source.file);
+    box.appendChild(btn);
+  });
+}
+
+/* ===== JWPLAYER EXTRACTION ===== */
+function extractJW(html){
+  const fileRegex = /file\s*:\s*"([^"]+)"/g;
+  const labelRegex = /label\s*:\s*"([^"]+)"/g;
+
+  const files = [...html.matchAll(fileRegex)];
+  const labels = [...html.matchAll(labelRegex)];
+
+  currentSources = [];
+
+  for(let i = 0; i < files.length; i++){
+    let streamURL = files[i][1];
+
+    if(streamURL.includes('lulu') || streamURL.includes('vidnest')){
+      streamURL = PROXY + encodeURIComponent(streamURL);
+    }
+
+    currentSources.push({
+      file: streamURL,
+      label: labels[i] ? labels[i][1] : 'auto'
+    });
+  }
+
+  if(currentSources.length > 0){
+    renderQualityButtons();
+    playCustomStream(currentSources[0].file);
+    return true;
+  }
+
+  return false;
+}
+
+/* ===== LULU EXTRACT FLOW ===== */
+async function extractLuluStream(link, buttonEl){
+  try{
+    if(buttonEl) buttonEl.textContent = 'Extracting...';
+
+    const html = await proxyFetch(link);
+    const ok = extractJW(html);
+
+    if(!ok){
+      ensureVideoPlayerUI();
+      setPlayerStatus('No stream found in Lulu page.');
+    }
+  }catch(err){
+    ensureVideoPlayerUI();
+    setPlayerStatus('Extraction failed.');
+    console.error(err);
+  }finally{
+    if(buttonEl) buttonEl.textContent = 'Extract';
+  }
+}
+
+/* ===== LOAD POSTS ===== */
+async function loadPosts(){
+  posts.innerHTML='Loading…';
+
+  try{
+    const r = await fetch(`${API}&page=${page}&search=${encodeURIComponent(search)}`);
+    totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1, 10);
+    const d = await r.json();
+
+    posts.innerHTML='';
+
+    d.forEach(p => {
+      const img = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+      const c = document.createElement('div');
+      c.className = 'card';
+      c.innerHTML = img
+        ? `<img class="thumb" src="${img}" alt=""><div class="title">${p.title.rendered}</div>`
+        : `<div class="title">${p.title.rendered}</div>`;
+      c.onclick = () => openPost(p);
+      posts.appendChild(c);
+    });
+
+    renderPagination();
+  }catch(e){
+    posts.innerHTML = 'Failed to load posts.';
+    pagination.innerHTML = '';
+  }
+}
+
+/* ===== PAGINATION ===== */
+function renderPagination(){
+  pagination.innerHTML='';
+
+  const add = (text, onClick, active=false) => {
+    const b = document.createElement('button');
+    b.textContent = text;
+    if(active) b.classList.add('active');
+    b.onclick = onClick;
+    pagination.appendChild(b);
+  };
+
+  add('Prev', () => {
+    if(page > 1){
+      page--;
+      loadPosts();
+    }
+  });
+
+  for(let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++){
+    add(i, () => {
+      page = i;
+      loadPosts();
+    }, i === page);
+  }
+
+  add('Next', () => {
+    if(page < totalPages){
+      page++;
+      loadPosts();
+    }
+  });
+
+  const input = document.createElement('input');
+  input.type='number';
+  input.min=1;
+  input.max=totalPages;
+  pagination.appendChild(input);
+
+  add('Go', () => {
+    const v = parseInt(input.value, 10);
+    if(v >= 1 && v <= totalPages){
+      page = v;
+      loadPosts();
+    }
+  });
+}
+
+/* ===== OPEN POST ===== */
+function openPost(p){
+  listView.style.display='none';
+  postView.style.display='block';
+
+  postThumb.src = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+  postTitle.innerHTML = p.title.rendered;
+
+  const date = new Date(p.date);
+  postMeta.textContent = `Posted on ${date.toDateString()} at ${date.toLocaleTimeString()}`;
+
+  const cleanText = document.createElement('div');
+  cleanText.innerHTML = decode(p.content.rendered);
+  cleanText.querySelectorAll('iframe,img,script').forEach(e => e.remove());
+  postContent.innerHTML = cleanText.innerHTML;
+
+  postStreams.innerHTML = '';
+  postPlayer.innerHTML = '';
+  currentSources = [];
+
+  const streamLinks = extractStreams(p.content.rendered);
+
+  streamLinks.forEach(u => {
+    const row = document.createElement('div');
+    row.className = 'stream-row';
+
+    const link = document.createElement('a');
+    link.href = u;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = u;
+    row.appendChild(link);
+
+    const playBtn = document.createElement('button');
+    playBtn.className = 'play-btn';
+    playBtn.textContent = `Play (${sourceName(u)})`;
+    playBtn.onclick = async () => {
+      playBtn.textContent = 'Loading...';
+
+      const src = await resolveVideo(u);
+
+      playBtn.textContent = `Play (${sourceName(u)})`;
+
+      postPlayer.innerHTML = src
+        ? `<div class="player-wrapper">
+             <iframe src="${src}" allowfullscreen></iframe>
+           </div>`
+        : 'Failed';
+    };
+    row.appendChild(playBtn);
+
+    if(isLuluLink(u)){
+      const extractBtn = document.createElement('button');
+      extractBtn.className = 'extract-btn';
+      extractBtn.textContent = 'Extract';
+      extractBtn.onclick = () => extractLuluStream(u, extractBtn);
+      row.appendChild(extractBtn);
+    }
+
+    postStreams.appendChild(row);
+  });
+
+  postImages.innerHTML = '';
+  extractImages(p.content.rendered).forEach(src => {
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    postImages.appendChild(img);
+  });
+}
+
+/* ===== NAV ===== */
+function backToList(){
+  if(hlsInstance){
+    hlsInstance.destroy();
+    hlsInstance = null;
+  }
+  postView.style.display='none';
+  listView.style.display='block';
+}
+
+/* ===== SEARCH ===== */
+searchInput.oninput = e => {
+  search = e.target.value;
+  page = 1;
+  loadPosts();
+};
+
+/* ===== START ===== */
+loadPosts();
+</script>
+
+</body>
+</html>
