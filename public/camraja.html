@@ -1,898 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Camraja – Full Extract Player</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TITAN ELITE // COMMAND CENTER</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
 
-  <style>
-    :root{
-      --bg:#000000;
-      --card:#020617;
-      --text:#e5e7eb;
-      --muted:#94a3b8;
-      --accent:#22c55e;
-      --accent2:#ffffff;
-      --btn2:#2563eb;
-      --danger:#ef4444;
-    }
+    <style>
+        :root {
+            --bg: #010409;
+            --surface: #0d1117;
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.2);
+            --text-main: #ffffff;
+            --text-dim: #8b949e;
+            --border: rgba(255, 255, 255, 0.1);
+            --glass: rgba(13, 17, 23, 0.9);
+        }
 
-    *{box-sizing:border-box}
+        * { box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; transition: all 0.2s ease; }
+        body { margin: 0; background: var(--bg); color: var(--text-main); overflow-x: hidden; }
 
-    body{
-      margin:0;
-      font-family:system-ui, sans-serif;
-      background:var(--bg);
-      color:var(--text);
-    }
+        /* --- PREMIUM HEADER --- */
+        header {
+            height: 70px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 5%; position: sticky; top: 0; z-index: 1000;
+            background: var(--glass); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+        }
+        .logo { font-size: 22px; font-weight: 900; color: var(--accent); text-shadow: 0 0 15px var(--accent-glow); }
 
-    header{
-      padding:14px;
-      position:sticky;
-      top:0;
-      background:#020617;
-      z-index:10;
-      border-bottom:1px solid #0f172a;
-    }
+        /* --- ADVANCED PAGINATION --- */
+        .pagination-container {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; padding: 25px 10px; flex-wrap: wrap; background: var(--bg);
+        }
+        .nav-btn {
+            background: var(--surface); border: 1px solid var(--border);
+            color: white; padding: 10px 18px; border-radius: 8px;
+            cursor: pointer; font-weight: 700; font-size: 12px;
+        }
+        .nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    header input{
-      width:100%;
-      padding:12px;
-      border-radius:8px;
-      border:none;
-      font-size:15px;
-      background:#111827;
-      color:#fff;
-      outline:none;
-    }
+        .jump-box {
+            display: flex; align-items: center; background: var(--surface);
+            border: 1px solid var(--border); border-radius: 8px; padding: 0 5px;
+        }
+        .jump-box input {
+            width: 50px; background: transparent; border: none; color: var(--accent);
+            text-align: center; font-weight: 800; outline: none; padding: 10px 0;
+        }
+        .go-btn {
+            background: var(--accent); color: #000; border: none;
+            padding: 6px 12px; border-radius: 6px; font-weight: 900;
+            font-size: 11px; cursor: pointer; margin-left: 5px;
+        }
+        .page-counter { font-size: 12px; color: var(--text-dim); font-weight: 600; padding: 0 10px; }
 
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-      gap:16px;
-      padding:16px;
-    }
+        /* --- GRID SYSTEM --- */
+        .stage { display: none; }
+        .stage.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
-    .card{
-      background:var(--card);
-      border-radius:12px;
-      overflow:hidden;
-      cursor:pointer;
-      border:1px solid #0f172a;
-    }
+        .grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 12px; padding: 0 12px; max-width: 1200px; margin: auto;
+        }
+        .card {
+            background: var(--surface); border-radius: 12px; overflow: hidden;
+            border: 1px solid var(--border); cursor: pointer;
+        }
+        .poster-box {
+            position: relative; width: 100%; padding-top: 140%; background: #000;
+        }
+        .poster-main { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 2; }
+        .poster-blur { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(20px); opacity: 0.3; }
+        .card-title { padding: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .thumb{
-      width:100%;
-      height:180px;
-      object-fit:cover;
-      display:block;
-    }
+        /* --- DETAIL PAGE --- */
+        .detail-header { padding: 15px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid var(--border); }
+        .player-box { width: 100%; background: #000; aspect-ratio: 16/9; }
+        video { width: 100%; height: 100%; }
+        .server-grid { padding: 15px; display: grid; gap: 10px; }
+        .server-row {
+            background: var(--surface); padding: 12px; border-radius: 10px;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border);
+        }
+        .extract-btn { background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 800; cursor: pointer; }
 
-    .card .title{
-      padding:10px;
-      font-size:14px;
-      line-height:1.4;
-    }
-
-    .pagination{
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      justify-content:center;
-      padding:16px;
-    }
-
-    .pagination button,
-    .pagination input{
-      padding:8px 12px;
-      border-radius:6px;
-      border:none;
-      background:#1e293b;
-      color:#fff;
-    }
-
-    .pagination button.active{
-      background:var(--accent2);
-      color:#000;
-    }
-
-    .pagination input{
-      width:70px;
-    }
-
-    #postView{
-      display:none;
-      max-width:960px;
-      margin:auto;
-      padding:16px;
-    }
-
-    .back{
-      color:var(--accent2);
-      cursor:pointer;
-      margin-bottom:12px;
-      display:inline-block;
-    }
-
-    .post-thumb{
-      width:100%;
-      max-height:360px;
-      object-fit:cover;
-      border-radius:12px;
-      display:block;
-      background:#111827;
-    }
-
-    .post-meta{
-      font-size:13px;
-      color:var(--muted);
-      margin:6px 0 14px;
-    }
-
-    .stream-row{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      margin:10px 0;
-      flex-wrap:wrap;
-      background:#0b1220;
-      border:1px solid #162133;
-      border-radius:10px;
-      padding:10px;
-    }
-
-    .stream-row a{
-      flex:1 1 100%;
-      color:var(--muted);
-      font-size:13px;
-      word-break:break-all;
-      text-decoration:none;
-    }
-
-    .btn-row{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-
-    .play-btn,
-    .extract-btn,
-    .playbtn,
-    .copy-btn{
-      border:none;
-      padding:8px 14px;
-      border-radius:6px;
-      cursor:pointer;
-      white-space:nowrap;
-      font-weight:600;
-    }
-
-    .play-btn{
-      background:var(--accent);
-      color:#022c22;
-    }
-
-    .extract-btn{
-      background:var(--btn2);
-      color:#fff;
-    }
-
-    .copy-btn{
-      background:#334155;
-      color:#fff;
-    }
-
-    .player-wrapper{
-      margin-top:14px;
-    }
-
-    .player-wrapper video,
-    .player-wrapper iframe{
-      width:100%;
-      height:420px;
-      border:none;
-      border-radius:12px;
-      background:#000;
-    }
-
-    #qualityBox{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:12px;
-    }
-
-    .playbtn{
-      background:#1e293b;
-      color:#fff;
-    }
-
-    .linkBox{
-      margin-top:8px;
-      padding:10px;
-      background:#0f172a;
-      border-radius:8px;
-      color:#cbd5e1;
-      font-size:12px;
-      word-break:break-all;
-      border:1px solid #1e293b;
-    }
-
-    .status{
-      margin-top:12px;
-      padding:10px;
-      border-radius:8px;
-      background:#0f172a;
-      color:#cbd5e1;
-      font-size:13px;
-      border:1px solid #1e293b;
-      white-space:pre-wrap;
-      word-break:break-word;
-    }
-
-    .image-grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-      gap:8px;
-      margin-top:16px;
-    }
-
-    .image-grid img{
-      width:100%;
-      height:auto;
-      object-fit:contain;
-      border-radius:8px;
-      background:#111827;
-    }
-
-    h3{
-      margin-top:24px;
-    }
-  </style>
+        .loader { width: 16px; height: 16px; border: 2px solid #fff; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
 
-  <header>
-    <input id="searchInput" placeholder="Search posts…" />
-  </header>
+<header>
+    <div class="logo">TITAN<span>ELITE</span></div>
+    <div id="status" style="font-size: 11px; color: var(--accent);">READY</div>
+</header>
 
-  <div id="listView">
-    <div id="posts" class="grid"></div>
-    <div id="pagination" class="pagination"></div>
-  </div>
+<div id="homeStage" class="stage active">
+    <div class="pagination-container" id="pagiTop"></div>
 
-  <div id="postView">
-    <div class="back" onclick="backToList()">← Back</div>
-    <img id="postThumb" class="post-thumb" />
-    <h2 id="postTitle"></h2>
-    <div id="postMeta" class="post-meta"></div>
-    <div id="postContent"></div>
+    <div id="postsGrid" class="grid"></div>
 
-    <h3>Downloads / Streams</h3>
-    <div id="postStreams"></div>
+    <div class="pagination-container" id="pagiBottom"></div>
+</div>
 
-    <div id="postPlayer"></div>
-    <div id="qualityBox"></div>
-    <div id="statusBox" class="status" style="display:none;"></div>
+<div id="detailStage" class="stage">
+    <div class="detail-header">
+        <button class="nav-btn" onclick="goBack()">← GALLERY</button>
+        <span id="postTitle" style="font-size:14px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+    </div>
+    <div class="player-box">
+        <video id="mainPlayer" controls playsinline></video>
+    </div>
+    <div id="serverList" class="server-grid"></div>
+</div>
 
-    <h3>Images</h3>
-    <div id="postImages" class="image-grid"></div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-  <script>
-    const API = 'https://camraja.com/wp-json/wp/v2/posts?_embed&per_page=10';
-    const PROXY = 'https://allinone.ascalrack.workers.dev/?url=';
-
-    let page = 1;
-    let search = '';
+<script>
+    let curPage = 1;
     let totalPages = 1;
+    const perPage = 16;
+    const PROXY = "https://allinone.godess.workers.dev/?url=";
+    const API_BASE = "https://camraja.com/wp-json/wp/v2/posts?_embed&per_page=" + perPage;
+    let hls = null;
 
-    let currentSources = [];
-    let hlsInstance = null;
-
-    const decode = h => (h || '')
-      .replace(/&lt;/g,'<')
-      .replace(/&gt;/g,'>')
-      .replace(/&quot;/g,'"')
-      .replace(/&#8217;/g,"'")
-      .replace(/&#038;/g,'&')
-      .replace(/&amp;/g,'&');
-
-    function clean(u){
-      try{
-        return u.split('#')[0];
-      }catch{
-        return u;
-      }
-    }
-
-    function setStatus(msg){
-      const box = document.getElementById('statusBox');
-      if(!msg){
-        box.style.display = 'none';
-        box.textContent = '';
-        return;
-      }
-      box.style.display = 'block';
-      box.textContent = msg;
-    }
-
-    async function proxyFetch(url){
-      const res = await fetch(PROXY + encodeURIComponent(url));
-      return await res.text();
-    }
-
-    async function followRedirect(url){
-      try{
-        const res = await fetch(PROXY + encodeURIComponent(url), { redirect: 'follow' });
-        return res.url || url;
-      }catch{
-        return url;
-      }
-    }
-
-    function sourceName(u=''){
-      if(/krakenfiles/i.test(u)) return 'KrakenFiles';
-      if(/mixdrop|mxdrop/i.test(u)) return 'MixDrop';
-      if(/luluvid|luluvdoo|vidnest/i.test(u)) return 'Lulu';
-      if(/voe\./i.test(u)) return 'VOE';
-      if(/streamtape/i.test(u)) return 'Streamtape';
-      if(/strcloud|advertape|tapeadsenjoyer/i.test(u)) return 'Strcloud';
-      if(/boodstream/i.test(u)) return 'Boodstream';
-      return 'Stream';
-    }
-
-    function normalize(u=''){
-      let m;
-
-      if(m = u.match(/krakenfiles\.com\/view\/([^\/]+)/i)) return `https://krakenfiles.com/embed-video/${m[1]}`;
-      if(m = u.match(/mxdrop\.to\/f\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
-      if(m = u.match(/mixdrop\.co\/e\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
-      if(m = u.match(/luluvid\.com\/([a-z0-9]+)/i)) return `https://luluvid.com/embed/${m[1]}`;
-      if(m = u.match(/luluvdoo\.com\/d\/([a-z0-9]+)/i)) return `https://luluvdoo.com/e/${m[1]}`;
-      if(m = u.match(/luluvdoo\.com\/e\/([a-z0-9]+)/i)) return `https://luluvdoo.com/e/${m[1]}`;
-      if(m = u.match(/vidnest\.net\/([a-z0-9]+)/i)) return `https://vidnest.net/e/${m[1]}`;
-      if(m = u.match(/voe\.(sx|uno|cx)\/([a-z0-9]+)/i)) return `https://voe.sx/e/${m[2]}`;
-      if(m = u.match(/streamtape\.com\/e\/([^\/]+)/i)) return `https://streamtape.com/e/${m[1]}`;
-      return null;
-    }
-
-    function ensureVideoPlayer(){
-      let player = document.getElementById('player');
-      if(player) return player;
-
-      document.getElementById('postPlayer').innerHTML = `
-        <div class="player-wrapper">
-          <video id="player" controls playsinline></video>
-        </div>
-      `;
-      return document.getElementById('player');
-    }
-
-    function destroyPlayer(){
-      if(hlsInstance){
-        hlsInstance.destroy();
-        hlsInstance = null;
-      }
-
-      const player = document.getElementById('player');
-      if(player){
-        player.pause();
-        player.removeAttribute('src');
-        player.load();
-      }
-    }
-
-    function playStream(url){
-      const player = ensureVideoPlayer();
-
-      if(hlsInstance){
-        hlsInstance.destroy();
-        hlsInstance = null;
-      }
-
-      if(!url.startsWith(PROXY) && url.includes('.m3u8')){
-        url = PROXY + encodeURIComponent(url);
-      }
-
-      if(url.includes('.m3u8')){
-        if(window.Hls && Hls.isSupported()){
-          hlsInstance = new Hls();
-          hlsInstance.loadSource(url);
-          hlsInstance.attachMedia(player);
-        }else{
-          player.src = url;
+    async function load(page) {
+        window.scrollTo(0, 0);
+        document.getElementById('status').innerHTML = '<span class="loader"></span>';
+        
+        try {
+            const res = await fetch(`${API_BASE}&page=${page}`);
+            totalPages = parseInt(res.headers.get('X-WP-TotalPages')) || 1;
+            const posts = await res.json();
+            
+            curPage = page;
+            renderGrid(posts);
+            renderPagi();
+        } catch (e) {
+            alert("End of the line or Network Error.");
         }
-      }else{
-        player.src = url;
-      }
-
-      player.play().catch(()=>{});
+        document.getElementById('status').innerText = 'ONLINE';
     }
 
-    function playDirectOrIframe(url){
-      if(/\.m3u8(\?|$)/i.test(url) || /\.(mp4|mkv|webm|mov)(\?|$)/i.test(url)){
-        playStream(url);
-      }else{
-        renderIframe(url);
-      }
-    }
-
-    function renderIframe(src){
-      destroyPlayer();
-      document.getElementById('postPlayer').innerHTML = `
-        <div class="player-wrapper">
-          <iframe src="${src}" allowfullscreen></iframe>
-        </div>
-      `;
-    }
-
-    function renderQualityButtons(){
-      const box = document.getElementById("qualityBox");
-      box.innerHTML = "";
-
-      currentSources.forEach(s => {
-        const btn = document.createElement("button");
-        btn.className = "playbtn";
-        btn.textContent = s.label || "auto";
-        btn.onclick = () => playStream(s.file);
-        box.appendChild(btn);
-      });
-    }
-
-    async function copyText(text){
-      try{
-        await navigator.clipboard.writeText(text);
-        setStatus("Copied stream URL.");
-      }catch{
-        setStatus("Could not copy.");
-      }
-    }
-
-    function extractStreams(html){
-      const decoded = decode(html);
-      const urls = [...decoded.matchAll(/https?:\/\/[^\s"'<>]+/gi)]
-        .map(m => clean(m[0]))
-        .filter(u =>
-          !u.match(/\.(jpg|png|gif|webp|jpeg)$/i) &&
-          !u.includes('imagetape.com')
-        );
-
-      return [...new Set(urls)];
-    }
-
-    function extractImages(html){
-      const doc = document.createElement('div');
-      doc.innerHTML = decode(html);
-      return [...doc.querySelectorAll('img')]
-        .map(i => clean(i.src))
-        .filter(Boolean);
-    }
-
-    async function resolveVideo(u){
-      const direct = normalize(u);
-      if(direct) return direct;
-
-      try{
-        const r = await fetch(PROXY + encodeURIComponent(u));
-        const t = decode(await r.text());
-        const m = t.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-        return m ? clean(m[1]) : null;
-      }catch{
-        return null;
-      }
-    }
-
-    function hostNeedsExtract(link=''){
-      return (
-        link.includes("vidnest") ||
-        link.includes("luluvid") ||
-        link.includes("luluvdoo") ||
-        link.includes("strcloud") ||
-        link.includes("advertape") ||
-        link.includes("tapeadsenjoyer") ||
-        link.includes("boodstream.cc")
-      );
-    }
-
-    async function extractStream(link){
-      setStatus("Extracting stream...");
-      let html = '';
-
-      if(link.includes("boodstream.cc")){
-        setStatus("Using Boodstream extractor...");
-        await extractBoodstream(link);
-        return true;
-      }
-
-      html = await proxyFetch(link);
-
-      if(
-        link.includes("vidnest") ||
-        link.includes("luluvid") ||
-        link.includes("luluvdoo") ||
-        link.includes("lulu")
-      ){
-        setStatus("Using JW extractor...");
-        extractJW(html);
-        return true;
-      }
-
-      if(
-        link.includes("strcloud") ||
-        link.includes("advertape") ||
-        link.includes("tapeadsenjoyer")
-      ){
-        setStatus("Using Strcloud extractor...");
-        await extractStrcloud(html);
-        return true;
-      }
-
-      setStatus("No extractor matched.");
-      return false;
-    }
-
-    async function extractBoodstream(link){
-      console.log("🎯 BOODSTREAM LINK:", link);
-
-      const match = link.match(/boodstream\.cc\/([A-Z0-9]+)/i);
-
-      if(!match){
-        console.log("❌ Invalid boodstream link");
-        setStatus("Invalid Boodstream link.");
-        return;
-      }
-
-      const videoId = match[1];
-      const reqId = crypto.randomUUID();
-      const time = Date.now().toString();
-      const userStr = crypto.randomUUID();
-
-      console.log("🆔 videoId:", videoId);
-      console.log("🆔 reqId:", reqId);
-      console.log("⏱️ time:", time);
-
-      if(!window.CryptoJS){
-        setStatus("Loading CryptoJS...");
-        await new Promise(res => {
-          const s = document.createElement("script");
-          s.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js";
-          s.onload = () => {
-            console.log("✅ CryptoJS Loaded");
-            res();
-          };
-          document.head.appendChild(s);
+    function renderGrid(posts) {
+        const grid = document.getElementById('postsGrid');
+        grid.innerHTML = '';
+        posts.forEach(p => {
+            const img = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="poster-box">
+                    <img src="${img}" class="poster-blur">
+                    <img src="${img}" class="poster-main" loading="lazy">
+                </div>
+                <div class="card-title">${p.title.rendered}</div>
+            `;
+            card.onclick = () => showDetail(p);
+            grid.appendChild(card);
         });
-      }
+    }
 
-      const key = CryptoJS.enc.Utf8.parse("kP9rT2vN8mJ1bZ6c");
-      const iv  = CryptoJS.enc.Utf8.parse("d7e8f9a0b1c2d3e4");
-      const raw = `t:WF;kZKMcXwKqE${reqId}`;
+    function renderPagi() {
+        const pagiHtml = `
+            <button class="nav-btn" ${curPage <= 1 ? 'disabled' : ''} onclick="load(${curPage - 1})">PREV</button>
+            <div class="page-counter">${curPage} / ${totalPages}</div>
+            <div class="jump-box">
+                <input type="number" id="jumpVal" placeholder="${curPage}" min="1" max="${totalPages}">
+                <button class="go-btn" onclick="doJump(this)">GO</button>
+            </div>
+            <button class="nav-btn" ${curPage >= totalPages ? 'disabled' : ''} onclick="load(${curPage + 1})">NEXT</button>
+        `;
+        document.getElementById('pagiTop').innerHTML = pagiHtml;
+        document.getElementById('pagiBottom').innerHTML = pagiHtml;
+    }
 
-      const sign = CryptoJS.AES.encrypt(raw, key, {
-        iv,
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7
-      }).toString();
+    function doJump(btn) {
+        const val = btn.parentElement.querySelector('input').value;
+        const pageNum = parseInt(val);
+        if (pageNum > 0 && pageNum <= totalPages) {
+            load(pageNum);
+        } else {
+            alert("Invalid Page Number");
+        }
+    }
 
-      const api = `https://apbood.boodstream.com/v1/file/getVideo?videoId=${videoId}&userStr=${userStr}`;
-      console.log("🌐 API:", api);
+    function showDetail(p) {
+        document.getElementById('homeStage').classList.remove('active');
+        document.getElementById('detailStage').classList.add('active');
+        document.getElementById('postTitle').innerText = p.title.rendered;
+        
+        const list = document.getElementById('serverList');
+        list.innerHTML = '';
+        const links = [...new Set(p.content.rendered.match(/https?:\/\/[^\s"'<>]+/g))];
 
-      try{
-        setStatus("Requesting Boodstream API...");
-
-        const res = await fetch(api, {
-          method: "GET",
-          mode: "cors",
-          headers: {
-            "a-req-id": reqId,
-            "a-time": time,
-            "user-client": crypto.randomUUID(),
-            "country-no": navigator.language || "en_US",
-            "a-sign": sign
-          }
+        links.forEach(l => {
+            if (l.match(/\.(jpg|png|gif|webp|svg|js|css)/i)) return;
+            const row = document.createElement('div');
+            row.className = 'server-row';
+            row.innerHTML = `
+                <span style="font-size:12px; color:var(--text-dim)">${l.split('/')[2]}</span>
+                <button class="extract-btn" onclick="extract('${l}', this)">EXTRACT</button>
+            `;
+            list.appendChild(row);
         });
+    }
 
-        console.log("📡 Status:", res.status);
+    async function extract(url, btn) {
+        const old = btn.innerHTML;
+        btn.innerHTML = '<span class="loader"></span>';
+        try {
+            const html = await fetch(PROXY + encodeURIComponent(url)).then(r => r.text());
+            const file = html.match(/file\s*:\s*"([^"]+)"/)?.[1];
+            if (file) play(file);
+        } catch (e) { alert("Source extraction failed."); }
+        btn.innerHTML = old;
+    }
 
-        const data = await res.json();
-        console.log("🔥 RESPONSE:", data);
-
-        if(data.code === 0 && data.data && data.data.videoUrl){
-          const videoUrl = data.data.videoUrl;
-
-          currentSources = [{
-            file: videoUrl,
-            label: "auto"
-          }];
-
-          renderQualityButtons();
-          playStream(videoUrl);
-
-          document.getElementById("qualityBox").innerHTML += `
-            <div class="linkBox">🎬 ${videoUrl}</div>
-          `;
-
-          setStatus("Boodstream extracted successfully.");
-        }else{
-          console.log("❌ API Error:", data.msg);
-          setStatus("Boodstream API error: " + (data.msg || "Unknown error"));
+    function play(src) {
+        const video = document.getElementById('mainPlayer');
+        if (src.includes(".m3u8") && !src.startsWith(PROXY)) src = PROXY + encodeURIComponent(src);
+        if (hls) hls.destroy();
+        if (Hls.isSupported() && src.includes(".m3u8")) {
+            hls = new Hls({ xhrSetup: (xhr, u) => {
+                if (!u.startsWith(PROXY) && !u.startsWith('blob:')) xhr.open('GET', PROXY + encodeURIComponent(u), true);
+            }});
+            hls.loadSource(src);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        } else {
+            video.src = src; video.play();
         }
-      }catch(e){
-        console.error("💥 Fetch failed:", e);
-        setStatus("Boodstream fetch failed.");
-      }
     }
 
-    function extractJW(html){
-      const fileRegex = /file\s*:\s*"([^"]+)"/g;
-      const labelRegex = /label\s*:\s*"([^"]+)"/g;
-
-      const files = [...html.matchAll(fileRegex)];
-      const labels = [...html.matchAll(labelRegex)];
-
-      currentSources = [];
-
-      for(let i=0; i<files.length; i++){
-        let streamURL = files[i][1];
-
-        if(
-          streamURL.includes("lulu") ||
-          streamURL.includes("luluvdoo") ||
-          streamURL.includes("vidnest")
-        ){
-          streamURL = PROXY + encodeURIComponent(streamURL);
-        }
-
-        currentSources.push({
-          file: streamURL,
-          label: labels[i] ? labels[i][1] : "auto"
-        });
-      }
-
-      if(currentSources.length > 0){
-        renderQualityButtons();
-        playStream(currentSources[0].file);
-        setStatus("JW sources extracted successfully.");
-      }else{
-        setStatus("No JW sources found.");
-      }
+    function goBack() {
+        if (hls) hls.destroy();
+        document.getElementById('detailStage').classList.remove('active');
+        document.getElementById('homeStage').classList.add('active');
     }
 
-    async function extractStrcloud(html){
-      const match = html.match(/id="(?:ideoooolink|captchalink|norobotlink)"[^>]*>(.*?)</);
-
-      if(!match){
-        setStatus("No Strcloud link found.");
-        return;
-      }
-
-      let url = match[1];
-      url = url.replace(/&amp;/g, "&");
-
-      if(url.startsWith("//")) url = "https:" + url;
-      if(url.startsWith("/")) url = "https:" + url;
-
-      const final = await followRedirect(url);
-
-      currentSources = [{
-        file: final,
-        label: "auto"
-      }];
-
-      renderQualityButtons();
-      playStream(final);
-      setStatus("Strcloud extracted successfully.");
-    }
-
-    async function loadPosts(){
-      const posts = document.getElementById('posts');
-      posts.innerHTML = 'Loading…';
-
-      try{
-        const r = await fetch(`${API}&page=${page}&search=${encodeURIComponent(search)}`);
-        totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1);
-        const d = await r.json();
-
-        posts.innerHTML = '';
-
-        d.forEach(p => {
-          const img = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-          const c = document.createElement('div');
-          c.className = 'card';
-          c.innerHTML = img
-            ? `<img class="thumb" src="${img}"><div class="title">${p.title.rendered}</div>`
-            : `<div class="title">${p.title.rendered}</div>`;
-          c.onclick = () => openPost(p);
-          posts.appendChild(c);
-        });
-
-        renderPagination();
-      }catch(err){
-        posts.innerHTML = 'Failed to load posts.';
-      }
-    }
-
-    function renderPagination(){
-      const pagination = document.getElementById('pagination');
-      pagination.innerHTML = '';
-
-      const add = (t, f, a) => {
-        const b = document.createElement('button');
-        b.textContent = t;
-        if(a) b.classList.add('active');
-        b.onclick = f;
-        pagination.appendChild(b);
-      };
-
-      add('Prev', () => {
-        if(page > 1){
-          page--;
-          loadPosts();
-        }
-      });
-
-      for(let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++){
-        add(i, () => {
-          page = i;
-          loadPosts();
-        }, i === page);
-      }
-
-      add('Next', () => {
-        if(page < totalPages){
-          page++;
-          loadPosts();
-        }
-      });
-
-      const input = document.createElement('input');
-      input.type = 'number';
-      input.min = 1;
-      input.max = totalPages;
-      pagination.appendChild(input);
-
-      add('Go', () => {
-        const v = parseInt(input.value);
-        if(v >= 1 && v <= totalPages){
-          page = v;
-          loadPosts();
-        }
-      });
-    }
-
-    function resetPostPlayerArea(){
-      destroyPlayer();
-      document.getElementById('postPlayer').innerHTML = '';
-      document.getElementById('qualityBox').innerHTML = '';
-      currentSources = [];
-      setStatus('');
-    }
-
-    function openPost(p){
-      document.getElementById('listView').style.display = 'none';
-      document.getElementById('postView').style.display = 'block';
-
-      resetPostPlayerArea();
-
-      document.getElementById('postThumb').src = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-      document.getElementById('postTitle').innerHTML = p.title.rendered;
-
-      const date = new Date(p.date);
-      document.getElementById('postMeta').textContent =
-        `Posted on ${date.toDateString()} at ${date.toLocaleTimeString()}`;
-
-      const cleanText = document.createElement('div');
-      cleanText.innerHTML = decode(p.content.rendered);
-      cleanText.querySelectorAll('iframe,img,script,video').forEach(e => e.remove());
-      document.getElementById('postContent').innerHTML = cleanText.innerHTML;
-
-      const postStreams = document.getElementById('postStreams');
-      postStreams.innerHTML = '';
-
-      const links = extractStreams(p.content.rendered);
-
-      links.forEach(u => {
-        const row = document.createElement('div');
-        row.className = 'stream-row';
-
-        const linkEl = document.createElement('a');
-        linkEl.href = u;
-        linkEl.target = '_blank';
-        linkEl.textContent = u;
-
-        const btnWrap = document.createElement('div');
-        btnWrap.className = 'btn-row';
-
-        const playBtn = document.createElement('button');
-        playBtn.className = 'play-btn';
-        playBtn.textContent = `Play (${sourceName(u)})`;
-
-        playBtn.onclick = async () => {
-          playBtn.textContent = 'Loading…';
-          resetPostPlayerArea();
-
-          try{
-            const src = await resolveVideo(u);
-
-            if(src){
-              playDirectOrIframe(src);
-              setStatus("Loaded normal player.");
-            }else{
-              setStatus("Failed to resolve video.");
-            }
-          }catch(err){
-            console.error(err);
-            setStatus("Play failed.");
-          }
-
-          playBtn.textContent = `Play (${sourceName(u)})`;
-        };
-
-        btnWrap.appendChild(playBtn);
-
-        if(hostNeedsExtract(u)){
-          const extractBtn = document.createElement('button');
-          extractBtn.className = 'extract-btn';
-          extractBtn.textContent = 'Extract';
-
-          extractBtn.onclick = async () => {
-            extractBtn.textContent = 'Extracting…';
-            resetPostPlayerArea();
-
-            try{
-              const ok = await extractStream(u);
-              if(!ok){
-                setStatus("Extractor did not match this URL.");
-              }
-            }catch(err){
-              console.error(err);
-              setStatus("Extract failed.");
-            }
-
-            extractBtn.textContent = 'Extract';
-          };
-
-          btnWrap.appendChild(extractBtn);
-        }
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-btn';
-        copyBtn.textContent = 'Copy';
-        copyBtn.onclick = () => copyText(u);
-
-        btnWrap.appendChild(copyBtn);
-
-        row.appendChild(linkEl);
-        row.appendChild(btnWrap);
-        postStreams.appendChild(row);
-      });
-
-      const postImages = document.getElementById('postImages');
-      postImages.innerHTML = '';
-
-      extractImages(p.content.rendered).forEach(src => {
-        const img = document.createElement('img');
-        img.src = src;
-        postImages.appendChild(img);
-      });
-    }
-
-    function backToList(){
-      resetPostPlayerArea();
-      document.getElementById('postView').style.display = 'none';
-      document.getElementById('listView').style.display = 'block';
-    }
-
-    document.getElementById('searchInput').oninput = e => {
-      search = e.target.value;
-      page = 1;
-      loadPosts();
-    };
-
-    loadPosts();
-  </script>
+    load(1);
+</script>
 </body>
 </html>
