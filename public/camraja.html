@@ -1,660 +1,898 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camraja – Final Layout Fix</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camraja – Full Extract Player</title>
 
-<style>
-:root{
-  --bg:#000000;
-  --card:#020617;
-  --text:#e5e7eb;
-  --muted:#94a3b8;
-  --accent:#22c55e;
-  --accent2:#ffffff;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:system-ui;
-  background:var(--bg);
-  color:var(--text);
-}
-header{
-  padding:14px;
-  position:sticky;
-  top:0;
-  background:#020617;
-  z-index:10;
-}
-header input{
-  width:100%;
-  padding:12px;
-  border-radius:8px;
-  border:none;
-  font-size:15px;
-}
+  <style>
+    :root{
+      --bg:#000000;
+      --card:#020617;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --accent:#22c55e;
+      --accent2:#ffffff;
+      --btn2:#2563eb;
+      --danger:#ef4444;
+    }
 
-/* ===== LIST PAGE ===== */
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:16px;
-  padding:16px;
-}
-.card{
-  background:var(--card);
-  border-radius:12px;
-  overflow:hidden;
-  cursor:pointer;
-}
-.thumb{
-  width:100%;
-  height:180px;
-  object-fit:cover;
-}
-.card .title{
-  padding:10px;
-  font-size:14px;
-}
+    *{box-sizing:border-box}
 
-/* ===== PAGINATION ===== */
-.pagination{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-  justify-content:center;
-  padding:16px;
-}
-.pagination button,
-.pagination input{
-  padding:8px 12px;
-  border-radius:6px;
-  border:none;
-  background:#1e293b;
-  color:#fff;
-}
-.pagination button.active{background:var(--accent2)}
-.pagination input{width:70px}
+    body{
+      margin:0;
+      font-family:system-ui, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
 
-/* ===== POST PAGE ===== */
-#postView{
-  display:none;
-  max-width:900px;
-  margin:auto;
-  padding:16px;
-}
-.back{
-  color:var(--accent2);
-  cursor:pointer;
-  margin-bottom:12px;
-}
-.post-thumb{
-  width:100%;
-  max-height:360px;
-  object-fit:cover;
-  border-radius:12px;
-}
-.post-meta{
-  font-size:13px;
-  color:var(--muted);
-  margin:6px 0 14px;
-}
-.stream-row{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  margin:10px 0;
-  flex-wrap:wrap;
-}
-.stream-row a{
-  flex:1;
-  color:var(--muted);
-  font-size:13px;
-  word-break:break-all;
-}
-.play-btn{
-  background:var(--accent);
-  color:#022c22;
-  border:none;
-  padding:8px 14px;
-  border-radius:6px;
-  cursor:pointer;
-  white-space:nowrap;
-}
+    header{
+      padding:14px;
+      position:sticky;
+      top:0;
+      background:#020617;
+      z-index:10;
+      border-bottom:1px solid #0f172a;
+    }
 
-/* Player */
-.player-wrapper{
-  margin-top:14px;
-}
-.player-wrapper video,
-.player-wrapper iframe{
-  width:100%;
-  height:400px;
-  border:none;
-  border-radius:12px;
-  background:#000;
-}
+    header input{
+      width:100%;
+      padding:12px;
+      border-radius:8px;
+      border:none;
+      font-size:15px;
+      background:#111827;
+      color:#fff;
+      outline:none;
+    }
 
-/* Quality buttons */
-#qualityBox{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-top:12px;
-}
-.playbtn{
-  background:#1e293b;
-  color:#fff;
-  border:none;
-  padding:8px 12px;
-  border-radius:6px;
-  cursor:pointer;
-}
-.linkBox{
-  margin-top:8px;
-  padding:10px;
-  background:#0f172a;
-  border-radius:8px;
-  color:#cbd5e1;
-  font-size:12px;
-  word-break:break-all;
-}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:16px;
+      padding:16px;
+    }
 
-/* Image gallery */
-.image-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-  gap:8px;
-  margin-top:16px;
-}
-.image-grid img{
-  width:100%;
-  height:auto;
-  object-fit:contain;
-  border-radius:8px;
-}
-</style>
+    .card{
+      background:var(--card);
+      border-radius:12px;
+      overflow:hidden;
+      cursor:pointer;
+      border:1px solid #0f172a;
+    }
+
+    .thumb{
+      width:100%;
+      height:180px;
+      object-fit:cover;
+      display:block;
+    }
+
+    .card .title{
+      padding:10px;
+      font-size:14px;
+      line-height:1.4;
+    }
+
+    .pagination{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      justify-content:center;
+      padding:16px;
+    }
+
+    .pagination button,
+    .pagination input{
+      padding:8px 12px;
+      border-radius:6px;
+      border:none;
+      background:#1e293b;
+      color:#fff;
+    }
+
+    .pagination button.active{
+      background:var(--accent2);
+      color:#000;
+    }
+
+    .pagination input{
+      width:70px;
+    }
+
+    #postView{
+      display:none;
+      max-width:960px;
+      margin:auto;
+      padding:16px;
+    }
+
+    .back{
+      color:var(--accent2);
+      cursor:pointer;
+      margin-bottom:12px;
+      display:inline-block;
+    }
+
+    .post-thumb{
+      width:100%;
+      max-height:360px;
+      object-fit:cover;
+      border-radius:12px;
+      display:block;
+      background:#111827;
+    }
+
+    .post-meta{
+      font-size:13px;
+      color:var(--muted);
+      margin:6px 0 14px;
+    }
+
+    .stream-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin:10px 0;
+      flex-wrap:wrap;
+      background:#0b1220;
+      border:1px solid #162133;
+      border-radius:10px;
+      padding:10px;
+    }
+
+    .stream-row a{
+      flex:1 1 100%;
+      color:var(--muted);
+      font-size:13px;
+      word-break:break-all;
+      text-decoration:none;
+    }
+
+    .btn-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .play-btn,
+    .extract-btn,
+    .playbtn,
+    .copy-btn{
+      border:none;
+      padding:8px 14px;
+      border-radius:6px;
+      cursor:pointer;
+      white-space:nowrap;
+      font-weight:600;
+    }
+
+    .play-btn{
+      background:var(--accent);
+      color:#022c22;
+    }
+
+    .extract-btn{
+      background:var(--btn2);
+      color:#fff;
+    }
+
+    .copy-btn{
+      background:#334155;
+      color:#fff;
+    }
+
+    .player-wrapper{
+      margin-top:14px;
+    }
+
+    .player-wrapper video,
+    .player-wrapper iframe{
+      width:100%;
+      height:420px;
+      border:none;
+      border-radius:12px;
+      background:#000;
+    }
+
+    #qualityBox{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .playbtn{
+      background:#1e293b;
+      color:#fff;
+    }
+
+    .linkBox{
+      margin-top:8px;
+      padding:10px;
+      background:#0f172a;
+      border-radius:8px;
+      color:#cbd5e1;
+      font-size:12px;
+      word-break:break-all;
+      border:1px solid #1e293b;
+    }
+
+    .status{
+      margin-top:12px;
+      padding:10px;
+      border-radius:8px;
+      background:#0f172a;
+      color:#cbd5e1;
+      font-size:13px;
+      border:1px solid #1e293b;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+
+    .image-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+      gap:8px;
+      margin-top:16px;
+    }
+
+    .image-grid img{
+      width:100%;
+      height:auto;
+      object-fit:contain;
+      border-radius:8px;
+      background:#111827;
+    }
+
+    h3{
+      margin-top:24px;
+    }
+  </style>
 </head>
-
 <body>
 
-<header>
-  <input id="searchInput" placeholder="Search posts…">
-</header>
+  <header>
+    <input id="searchInput" placeholder="Search posts…" />
+  </header>
 
-<div id="listView">
-  <div id="posts" class="grid"></div>
-  <div id="pagination" class="pagination"></div>
-</div>
+  <div id="listView">
+    <div id="posts" class="grid"></div>
+    <div id="pagination" class="pagination"></div>
+  </div>
 
-<div id="postView">
-  <div class="back" onclick="backToList()">← Back</div>
-  <img id="postThumb" class="post-thumb">
-  <h2 id="postTitle"></h2>
-  <div id="postMeta" class="post-meta"></div>
-  <div id="postContent"></div>
+  <div id="postView">
+    <div class="back" onclick="backToList()">← Back</div>
+    <img id="postThumb" class="post-thumb" />
+    <h2 id="postTitle"></h2>
+    <div id="postMeta" class="post-meta"></div>
+    <div id="postContent"></div>
 
-  <h3>Downloads / Streams</h3>
-  <div id="postStreams"></div>
+    <h3>Downloads / Streams</h3>
+    <div id="postStreams"></div>
 
-  <div id="postPlayer"></div>
-  <div id="qualityBox"></div>
+    <div id="postPlayer"></div>
+    <div id="qualityBox"></div>
+    <div id="statusBox" class="status" style="display:none;"></div>
 
-  <h3>Images</h3>
-  <div id="postImages" class="image-grid"></div>
-</div>
+    <h3>Images</h3>
+    <div id="postImages" class="image-grid"></div>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script>
-const API='https://camraja.com/wp-json/wp/v2/posts?_embed&per_page=10';
-const PROXY='https://allinone.ascalrack.workers.dev/?url=';
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-let page=1, search='', totalPages=1;
-let currentSources=[];
-let hlsInstance=null;
+  <script>
+    const API = 'https://camraja.com/wp-json/wp/v2/posts?_embed&per_page=10';
+    const PROXY = 'https://allinone.ascalrack.workers.dev/?url=';
 
-const decode=h=>h.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
-const clean=u=>u.split(/[?#]/)[0];
+    let page = 1;
+    let search = '';
+    let totalPages = 1;
 
-/* ===== HELPERS ===== */
-async function proxyFetch(url){
-  const r = await fetch(PROXY + encodeURIComponent(url));
-  return await r.text();
-}
+    let currentSources = [];
+    let hlsInstance = null;
 
-async function followRedirect(url){
-  try{
-    const r = await fetch(PROXY + encodeURIComponent(url), { redirect:'follow' });
-    return r.url || url;
-  }catch{
-    return url;
-  }
-}
+    const decode = h => (h || '')
+      .replace(/&lt;/g,'<')
+      .replace(/&gt;/g,'>')
+      .replace(/&quot;/g,'"')
+      .replace(/&#8217;/g,"'")
+      .replace(/&#038;/g,'&')
+      .replace(/&amp;/g,'&');
 
-function escapeAttr(str=''){
-  return str.replace(/"/g,'&quot;');
-}
-
-/* ===== SOURCE NAME ===== */
-function sourceName(u){
-  if(/krakenfiles/i.test(u)) return 'KrakenFiles';
-  if(/mixdrop|mxdrop/i.test(u)) return 'MixDrop';
-  if(/luluvid|luluvdoo|vidnest/i.test(u)) return 'Lulu';
-  if(/voe\./i.test(u)) return 'VOE';
-  if(/streamtape/i.test(u)) return 'Streamtape';
-  if(/boodstream/i.test(u)) return 'Boodstream';
-  if(/strcloud|advertape|tapeadsenjoyer/i.test(u)) return 'Strcloud';
-  return 'Stream';
-}
-
-/* ===== EMBED NORMALIZE ===== */
-function normalize(u){
-  let m;
-  if(m=u.match(/krakenfiles\.com\/view\/([^\/]+)/i)) return `https://krakenfiles.com/embed-video/${m[1]}`;
-  if(m=u.match(/mxdrop\.to\/f\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
-  if(m=u.match(/mixdrop\.co\/e\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
-  if(m=u.match(/luluvid\.com\/([a-z0-9]+)/i)) return `https://luluvid.com/embed/${m[1]}`;
-  if(m=u.match(/luluvdoo\.com\/d\/([a-z0-9]+)/i)) return `https://luluvdoo.com/e/${m[1]}`;
-  if(m=u.match(/voe\.(sx|uno|cx)\/([a-z0-9]+)/i)) return `https://voe.sx/e/${m[2]}`;
-  if(m=u.match(/streamtape\.com\/e\/([^\/]+)/i)) return `https://streamtape.com/e/${m[1]}`;
-  return null;
-}
-
-/* ===== PLAYER ===== */
-function ensureVideoPlayer(){
-  let player = document.getElementById('player');
-  if(player) return player;
-
-  postPlayer.innerHTML = `
-    <div class="player-wrapper">
-      <video id="player" controls playsinline></video>
-    </div>
-  `;
-  return document.getElementById('player');
-}
-
-function playStream(url){
-  const player = ensureVideoPlayer();
-
-  if(hlsInstance){
-    hlsInstance.destroy();
-    hlsInstance = null;
-  }
-
-  if(!url.startsWith(PROXY) && url.includes('.m3u8')){
-    url = PROXY + encodeURIComponent(url);
-  }
-
-  if(url.includes('.m3u8')){
-    if(window.Hls && Hls.isSupported()){
-      hlsInstance = new Hls();
-      hlsInstance.loadSource(url);
-      hlsInstance.attachMedia(player);
-    }else{
-      player.src = url;
-    }
-  }else{
-    player.src = url;
-  }
-
-  player.play().catch(()=>{});
-}
-
-function renderIframe(src){
-  if(hlsInstance){
-    hlsInstance.destroy();
-    hlsInstance = null;
-  }
-  postPlayer.innerHTML = `
-    <div class="player-wrapper">
-      <iframe src="${escapeAttr(src)}" allowfullscreen></iframe>
-    </div>
-  `;
-}
-
-function renderQualityButtons(){
-  const box = document.getElementById("qualityBox");
-  box.innerHTML = "";
-
-  currentSources.forEach(source=>{
-    const btn = document.createElement("button");
-    btn.className = "playbtn";
-    btn.textContent = source.label || "auto";
-    btn.onclick = ()=>playStream(source.file);
-    box.appendChild(btn);
-  });
-}
-
-/* ---------------- STREAM EXTRACTION ---------------- */
-
-async function extractStream(link){
-  let html = await proxyFetch(link);
-
-  /* JWPLAYER HOSTS */
-  if(
-    link.includes("vidnest") ||
-    link.includes("luluvid") ||
-    link.includes("luluvdoo") ||
-    link.includes("lulu")
-  ){
-    extractJW(html);
-    return true;
-  }
-
-  /* STRCLOUD */
-  if(
-    link.includes("strcloud") ||
-    link.includes("advertape") ||
-    link.includes("tapeadsenjoyer")
-  ){
-    await extractStrcloud(html);
-    return true;
-  }
-
-  /* BOODSTREAM */
-  if(link.includes("boodstream.cc")){
-    await extractBoodstream(link);
-    return true;
-  }
-
-  return false;
-}
-
-async function extractBoodstream(link){
-  console.log("🎯 BOODSTREAM LINK:", link);
-
-  const match = link.match(/boodstream\.cc\/([A-Z0-9]+)/i);
-
-  if(!match){
-    console.log("❌ Invalid boodstream link");
-    return;
-  }
-
-  const videoId = match[1];
-  const reqId = crypto.randomUUID();
-  const time = Date.now().toString();
-  const userStr = crypto.randomUUID();
-
-  if(!window.CryptoJS){
-    await new Promise(res=>{
-      const s = document.createElement("script");
-      s.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js";
-      s.onload = res;
-      document.head.appendChild(s);
-    });
-  }
-
-  const key = CryptoJS.enc.Utf8.parse("kP9rT2vN8mJ1bZ6c");
-  const iv  = CryptoJS.enc.Utf8.parse("d7e8f9a0b1c2d3e4");
-  const raw = `t:WF;kZKMcXwKqE${reqId}`;
-
-  const sign = CryptoJS.AES.encrypt(raw, key, {
-    iv,
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7
-  }).toString();
-
-  const api = `https://apbood.boodstream.com/v1/file/getVideo?videoId=${videoId}&userStr=${userStr}`;
-
-  try{
-    const res = await fetch(api, {
-      method: "GET",
-      mode: "cors",
-      headers: {
-        "a-req-id": reqId,
-        "a-time": time,
-        "user-client": crypto.randomUUID(),
-        "country-no": navigator.language || "en_US",
-        "a-sign": sign
+    function clean(u){
+      try{
+        return u.split('#')[0];
+      }catch{
+        return u;
       }
-    });
-
-    const data = await res.json();
-    console.log("🔥 RESPONSE:", data);
-
-    if(data.code === 0 && data.data?.videoUrl){
-      const videoUrl = data.data.videoUrl;
-      currentSources = [{ file: videoUrl, label: "auto" }];
-      renderQualityButtons();
-      playStream(videoUrl);
-    }else{
-      console.log("❌ API Error:", data.msg);
-      postPlayer.innerHTML = 'Failed';
-    }
-  }catch(e){
-    console.error("💥 Fetch failed:", e);
-    postPlayer.innerHTML = 'Failed';
-  }
-}
-
-/* ---------------- JWPLAYER PARSER ---------------- */
-
-function extractJW(html){
-  const fileRegex = /file\s*:\s*"([^"]+)"/g;
-  const labelRegex = /label\s*:\s*"([^"]+)"/g;
-
-  const files = [...html.matchAll(fileRegex)];
-  const labels = [...html.matchAll(labelRegex)];
-
-  currentSources = [];
-
-  for(let i=0;i<files.length;i++){
-    let streamURL = files[i][1];
-
-    if(
-      streamURL.includes("lulu") ||
-      streamURL.includes("luluvdoo") ||
-      streamURL.includes("vidnest")
-    ){
-      streamURL = PROXY + encodeURIComponent(streamURL);
     }
 
-    currentSources.push({
-      file: streamURL,
-      label: labels[i] ? labels[i][1] : "auto"
-    });
-  }
+    function setStatus(msg){
+      const box = document.getElementById('statusBox');
+      if(!msg){
+        box.style.display = 'none';
+        box.textContent = '';
+        return;
+      }
+      box.style.display = 'block';
+      box.textContent = msg;
+    }
 
-  if(currentSources.length > 0){
-    renderQualityButtons();
-    playStream(currentSources[0].file);
-  }else{
-    postPlayer.innerHTML = 'Failed';
-  }
-}
+    async function proxyFetch(url){
+      const res = await fetch(PROXY + encodeURIComponent(url));
+      return await res.text();
+    }
 
-/* ---------------- STRCLOUD PARSER ---------------- */
+    async function followRedirect(url){
+      try{
+        const res = await fetch(PROXY + encodeURIComponent(url), { redirect: 'follow' });
+        return res.url || url;
+      }catch{
+        return url;
+      }
+    }
 
-async function extractStrcloud(html){
-  const match = html.match(/id="(?:ideoooolink|captchalink|norobotlink)"[^>]*>(.*?)</);
+    function sourceName(u=''){
+      if(/krakenfiles/i.test(u)) return 'KrakenFiles';
+      if(/mixdrop|mxdrop/i.test(u)) return 'MixDrop';
+      if(/luluvid|luluvdoo|vidnest/i.test(u)) return 'Lulu';
+      if(/voe\./i.test(u)) return 'VOE';
+      if(/streamtape/i.test(u)) return 'Streamtape';
+      if(/strcloud|advertape|tapeadsenjoyer/i.test(u)) return 'Strcloud';
+      if(/boodstream/i.test(u)) return 'Boodstream';
+      return 'Stream';
+    }
 
-  if(!match){
-    postPlayer.innerHTML = 'Failed';
-    return;
-  }
+    function normalize(u=''){
+      let m;
 
-  let url = match[1];
-  url = url.replace(/&amp;/g,"&");
+      if(m = u.match(/krakenfiles\.com\/view\/([^\/]+)/i)) return `https://krakenfiles.com/embed-video/${m[1]}`;
+      if(m = u.match(/mxdrop\.to\/f\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
+      if(m = u.match(/mixdrop\.co\/e\/([^\/]+)/i)) return `https://mixdrop.co/e/${m[1]}`;
+      if(m = u.match(/luluvid\.com\/([a-z0-9]+)/i)) return `https://luluvid.com/embed/${m[1]}`;
+      if(m = u.match(/luluvdoo\.com\/d\/([a-z0-9]+)/i)) return `https://luluvdoo.com/e/${m[1]}`;
+      if(m = u.match(/luluvdoo\.com\/e\/([a-z0-9]+)/i)) return `https://luluvdoo.com/e/${m[1]}`;
+      if(m = u.match(/vidnest\.net\/([a-z0-9]+)/i)) return `https://vidnest.net/e/${m[1]}`;
+      if(m = u.match(/voe\.(sx|uno|cx)\/([a-z0-9]+)/i)) return `https://voe.sx/e/${m[2]}`;
+      if(m = u.match(/streamtape\.com\/e\/([^\/]+)/i)) return `https://streamtape.com/e/${m[1]}`;
+      return null;
+    }
 
-  if(url.startsWith("//")) url = "https:" + url;
-  if(url.startsWith("/")) url = "https:" + url;
+    function ensureVideoPlayer(){
+      let player = document.getElementById('player');
+      if(player) return player;
 
-  const final = await followRedirect(url);
+      document.getElementById('postPlayer').innerHTML = `
+        <div class="player-wrapper">
+          <video id="player" controls playsinline></video>
+        </div>
+      `;
+      return document.getElementById('player');
+    }
 
-  currentSources = [{ file: final, label: "auto" }];
-  renderQualityButtons();
-  playStream(final);
-}
+    function destroyPlayer(){
+      if(hlsInstance){
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
 
-/* ===== FALLBACK RESOLVE VIDEO ===== */
-async function resolveVideo(u){
-  const direct = normalize(u);
-  if(direct) return direct;
+      const player = document.getElementById('player');
+      if(player){
+        player.pause();
+        player.removeAttribute('src');
+        player.load();
+      }
+    }
 
-  try{
-    const r = await fetch(PROXY + encodeURIComponent(u));
-    const t = decode(await r.text());
-    const m = t.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-    return m ? clean(m[1]) : null;
-  }catch{
-    return null;
-  }
-}
+    function playStream(url){
+      const player = ensureVideoPlayer();
 
-/* ===== EXTRACT LINKS ===== */
-function extractStreams(html){
-  const urls = [...decode(html).matchAll(/https?:\/\/[^\s"'<>]+/gi)]
-    .map(m=>clean(m[0]))
-    .filter(u =>
-      !u.match(/\.(jpg|png|gif|webp)$/i) &&
-      !u.includes('imagetape.com')
-    );
+      if(hlsInstance){
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
 
-  return [...new Set(urls)];
-}
+      if(!url.startsWith(PROXY) && url.includes('.m3u8')){
+        url = PROXY + encodeURIComponent(url);
+      }
 
-function extractImages(html){
-  const doc = document.createElement('div');
-  doc.innerHTML = decode(html);
-  return [...doc.querySelectorAll('img')].map(i=>clean(i.src));
-}
+      if(url.includes('.m3u8')){
+        if(window.Hls && Hls.isSupported()){
+          hlsInstance = new Hls();
+          hlsInstance.loadSource(url);
+          hlsInstance.attachMedia(player);
+        }else{
+          player.src = url;
+        }
+      }else{
+        player.src = url;
+      }
 
-/* ===== LOAD POSTS ===== */
-async function loadPosts(){
-  posts.innerHTML='Loading…';
-  const r=await fetch(`${API}&page=${page}&search=${search}`);
-  totalPages=parseInt(r.headers.get('X-WP-TotalPages')||1);
-  const d=await r.json();
-  posts.innerHTML='';
-  d.forEach(p=>{
-    const img=p._embedded?.['wp:featuredmedia']?.[0]?.source_url||'';
-    const c=document.createElement('div');
-    c.className='card';
-    c.innerHTML=img
-      ? `<img class="thumb" src="${img}"><div class="title">${p.title.rendered}</div>`
-      : `<div class="title">${p.title.rendered}</div>`;
-    c.onclick=()=>openPost(p);
-    posts.appendChild(c);
-  });
-  renderPagination();
-}
+      player.play().catch(()=>{});
+    }
 
-/* ===== PAGINATION ===== */
-function renderPagination(){
-  pagination.innerHTML='';
-  const add=(t,f,a)=>{
-    const b=document.createElement('button');
-    b.textContent=t;
-    if(a) b.classList.add('active');
-    b.onclick=f;
-    pagination.appendChild(b);
-  };
-  add('Prev',()=>page>1&&(page--,loadPosts()));
-  for(let i=Math.max(1,page-2);i<=Math.min(totalPages,page+2);i++){
-    add(i,()=>{page=i;loadPosts();},i===page);
-  }
-  add('Next',()=>page<totalPages&&(page++,loadPosts()));
-  const i=document.createElement('input');
-  i.type='number';
-  i.min=1;
-  i.max=totalPages;
-  pagination.appendChild(i);
-  add('Go',()=>{const v=parseInt(i.value);if(v>=1&&v<=totalPages){page=v;loadPosts();}});
-}
+    function playDirectOrIframe(url){
+      if(/\.m3u8(\?|$)/i.test(url) || /\.(mp4|mkv|webm|mov)(\?|$)/i.test(url)){
+        playStream(url);
+      }else{
+        renderIframe(url);
+      }
+    }
 
-/* ===== OPEN POST ===== */
-function openPost(p){
-  listView.style.display='none';
-  postView.style.display='block';
+    function renderIframe(src){
+      destroyPlayer();
+      document.getElementById('postPlayer').innerHTML = `
+        <div class="player-wrapper">
+          <iframe src="${src}" allowfullscreen></iframe>
+        </div>
+      `;
+    }
 
-  currentSources = [];
-  if(hlsInstance){
-    hlsInstance.destroy();
-    hlsInstance = null;
-  }
+    function renderQualityButtons(){
+      const box = document.getElementById("qualityBox");
+      box.innerHTML = "";
 
-  postThumb.src=p._embedded?.['wp:featuredmedia']?.[0]?.source_url||'';
-  postTitle.innerHTML=p.title.rendered;
+      currentSources.forEach(s => {
+        const btn = document.createElement("button");
+        btn.className = "playbtn";
+        btn.textContent = s.label || "auto";
+        btn.onclick = () => playStream(s.file);
+        box.appendChild(btn);
+      });
+    }
 
-  const date=new Date(p.date);
-  postMeta.textContent=`Posted on ${date.toDateString()} at ${date.toLocaleTimeString()}`;
+    async function copyText(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        setStatus("Copied stream URL.");
+      }catch{
+        setStatus("Could not copy.");
+      }
+    }
 
-  const cleanText=document.createElement('div');
-  cleanText.innerHTML=decode(p.content.rendered);
-  cleanText.querySelectorAll('iframe,img,script').forEach(e=>e.remove());
-  postContent.innerHTML=cleanText.innerHTML;
+    function extractStreams(html){
+      const decoded = decode(html);
+      const urls = [...decoded.matchAll(/https?:\/\/[^\s"'<>]+/gi)]
+        .map(m => clean(m[0]))
+        .filter(u =>
+          !u.match(/\.(jpg|png|gif|webp|jpeg)$/i) &&
+          !u.includes('imagetape.com')
+        );
 
-  postStreams.innerHTML='';
-  postPlayer.innerHTML='';
-  qualityBox.innerHTML='';
+      return [...new Set(urls)];
+    }
 
-  extractStreams(p.content.rendered).forEach(u=>{
-    const row=document.createElement('div');
-    row.className='stream-row';
-    row.innerHTML=`<a href="${u}" target="_blank">${u}</a>`;
+    function extractImages(html){
+      const doc = document.createElement('div');
+      doc.innerHTML = decode(html);
+      return [...doc.querySelectorAll('img')]
+        .map(i => clean(i.src))
+        .filter(Boolean);
+    }
 
-    const b=document.createElement('button');
-    b.className='play-btn';
-    b.textContent=`Play (${sourceName(u)})`;
-
-    b.onclick=async()=>{
-      b.textContent='Loading…';
-      postPlayer.innerHTML='';
-      qualityBox.innerHTML='';
-      currentSources=[];
+    async function resolveVideo(u){
+      const direct = normalize(u);
+      if(direct) return direct;
 
       try{
-        const handled = await extractStream(u);
+        const r = await fetch(PROXY + encodeURIComponent(u));
+        const t = decode(await r.text());
+        const m = t.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+        return m ? clean(m[1]) : null;
+      }catch{
+        return null;
+      }
+    }
 
-        if(!handled){
-          const src = await resolveVideo(u);
+    function hostNeedsExtract(link=''){
+      return (
+        link.includes("vidnest") ||
+        link.includes("luluvid") ||
+        link.includes("luluvdoo") ||
+        link.includes("strcloud") ||
+        link.includes("advertape") ||
+        link.includes("tapeadsenjoyer") ||
+        link.includes("boodstream.cc")
+      );
+    }
 
-          if(src){
-            renderIframe(src);
-          }else{
-            postPlayer.innerHTML='Failed';
-          }
-        }
-      }catch(err){
-        console.error(err);
-        postPlayer.innerHTML='Failed';
+    async function extractStream(link){
+      setStatus("Extracting stream...");
+      let html = '';
+
+      if(link.includes("boodstream.cc")){
+        setStatus("Using Boodstream extractor...");
+        await extractBoodstream(link);
+        return true;
       }
 
-      b.textContent=`Play (${sourceName(u)})`;
+      html = await proxyFetch(link);
+
+      if(
+        link.includes("vidnest") ||
+        link.includes("luluvid") ||
+        link.includes("luluvdoo") ||
+        link.includes("lulu")
+      ){
+        setStatus("Using JW extractor...");
+        extractJW(html);
+        return true;
+      }
+
+      if(
+        link.includes("strcloud") ||
+        link.includes("advertape") ||
+        link.includes("tapeadsenjoyer")
+      ){
+        setStatus("Using Strcloud extractor...");
+        await extractStrcloud(html);
+        return true;
+      }
+
+      setStatus("No extractor matched.");
+      return false;
+    }
+
+    async function extractBoodstream(link){
+      console.log("🎯 BOODSTREAM LINK:", link);
+
+      const match = link.match(/boodstream\.cc\/([A-Z0-9]+)/i);
+
+      if(!match){
+        console.log("❌ Invalid boodstream link");
+        setStatus("Invalid Boodstream link.");
+        return;
+      }
+
+      const videoId = match[1];
+      const reqId = crypto.randomUUID();
+      const time = Date.now().toString();
+      const userStr = crypto.randomUUID();
+
+      console.log("🆔 videoId:", videoId);
+      console.log("🆔 reqId:", reqId);
+      console.log("⏱️ time:", time);
+
+      if(!window.CryptoJS){
+        setStatus("Loading CryptoJS...");
+        await new Promise(res => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js";
+          s.onload = () => {
+            console.log("✅ CryptoJS Loaded");
+            res();
+          };
+          document.head.appendChild(s);
+        });
+      }
+
+      const key = CryptoJS.enc.Utf8.parse("kP9rT2vN8mJ1bZ6c");
+      const iv  = CryptoJS.enc.Utf8.parse("d7e8f9a0b1c2d3e4");
+      const raw = `t:WF;kZKMcXwKqE${reqId}`;
+
+      const sign = CryptoJS.AES.encrypt(raw, key, {
+        iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      }).toString();
+
+      const api = `https://apbood.boodstream.com/v1/file/getVideo?videoId=${videoId}&userStr=${userStr}`;
+      console.log("🌐 API:", api);
+
+      try{
+        setStatus("Requesting Boodstream API...");
+
+        const res = await fetch(api, {
+          method: "GET",
+          mode: "cors",
+          headers: {
+            "a-req-id": reqId,
+            "a-time": time,
+            "user-client": crypto.randomUUID(),
+            "country-no": navigator.language || "en_US",
+            "a-sign": sign
+          }
+        });
+
+        console.log("📡 Status:", res.status);
+
+        const data = await res.json();
+        console.log("🔥 RESPONSE:", data);
+
+        if(data.code === 0 && data.data && data.data.videoUrl){
+          const videoUrl = data.data.videoUrl;
+
+          currentSources = [{
+            file: videoUrl,
+            label: "auto"
+          }];
+
+          renderQualityButtons();
+          playStream(videoUrl);
+
+          document.getElementById("qualityBox").innerHTML += `
+            <div class="linkBox">🎬 ${videoUrl}</div>
+          `;
+
+          setStatus("Boodstream extracted successfully.");
+        }else{
+          console.log("❌ API Error:", data.msg);
+          setStatus("Boodstream API error: " + (data.msg || "Unknown error"));
+        }
+      }catch(e){
+        console.error("💥 Fetch failed:", e);
+        setStatus("Boodstream fetch failed.");
+      }
+    }
+
+    function extractJW(html){
+      const fileRegex = /file\s*:\s*"([^"]+)"/g;
+      const labelRegex = /label\s*:\s*"([^"]+)"/g;
+
+      const files = [...html.matchAll(fileRegex)];
+      const labels = [...html.matchAll(labelRegex)];
+
+      currentSources = [];
+
+      for(let i=0; i<files.length; i++){
+        let streamURL = files[i][1];
+
+        if(
+          streamURL.includes("lulu") ||
+          streamURL.includes("luluvdoo") ||
+          streamURL.includes("vidnest")
+        ){
+          streamURL = PROXY + encodeURIComponent(streamURL);
+        }
+
+        currentSources.push({
+          file: streamURL,
+          label: labels[i] ? labels[i][1] : "auto"
+        });
+      }
+
+      if(currentSources.length > 0){
+        renderQualityButtons();
+        playStream(currentSources[0].file);
+        setStatus("JW sources extracted successfully.");
+      }else{
+        setStatus("No JW sources found.");
+      }
+    }
+
+    async function extractStrcloud(html){
+      const match = html.match(/id="(?:ideoooolink|captchalink|norobotlink)"[^>]*>(.*?)</);
+
+      if(!match){
+        setStatus("No Strcloud link found.");
+        return;
+      }
+
+      let url = match[1];
+      url = url.replace(/&amp;/g, "&");
+
+      if(url.startsWith("//")) url = "https:" + url;
+      if(url.startsWith("/")) url = "https:" + url;
+
+      const final = await followRedirect(url);
+
+      currentSources = [{
+        file: final,
+        label: "auto"
+      }];
+
+      renderQualityButtons();
+      playStream(final);
+      setStatus("Strcloud extracted successfully.");
+    }
+
+    async function loadPosts(){
+      const posts = document.getElementById('posts');
+      posts.innerHTML = 'Loading…';
+
+      try{
+        const r = await fetch(`${API}&page=${page}&search=${encodeURIComponent(search)}`);
+        totalPages = parseInt(r.headers.get('X-WP-TotalPages') || 1);
+        const d = await r.json();
+
+        posts.innerHTML = '';
+
+        d.forEach(p => {
+          const img = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+          const c = document.createElement('div');
+          c.className = 'card';
+          c.innerHTML = img
+            ? `<img class="thumb" src="${img}"><div class="title">${p.title.rendered}</div>`
+            : `<div class="title">${p.title.rendered}</div>`;
+          c.onclick = () => openPost(p);
+          posts.appendChild(c);
+        });
+
+        renderPagination();
+      }catch(err){
+        posts.innerHTML = 'Failed to load posts.';
+      }
+    }
+
+    function renderPagination(){
+      const pagination = document.getElementById('pagination');
+      pagination.innerHTML = '';
+
+      const add = (t, f, a) => {
+        const b = document.createElement('button');
+        b.textContent = t;
+        if(a) b.classList.add('active');
+        b.onclick = f;
+        pagination.appendChild(b);
+      };
+
+      add('Prev', () => {
+        if(page > 1){
+          page--;
+          loadPosts();
+        }
+      });
+
+      for(let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++){
+        add(i, () => {
+          page = i;
+          loadPosts();
+        }, i === page);
+      }
+
+      add('Next', () => {
+        if(page < totalPages){
+          page++;
+          loadPosts();
+        }
+      });
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = 1;
+      input.max = totalPages;
+      pagination.appendChild(input);
+
+      add('Go', () => {
+        const v = parseInt(input.value);
+        if(v >= 1 && v <= totalPages){
+          page = v;
+          loadPosts();
+        }
+      });
+    }
+
+    function resetPostPlayerArea(){
+      destroyPlayer();
+      document.getElementById('postPlayer').innerHTML = '';
+      document.getElementById('qualityBox').innerHTML = '';
+      currentSources = [];
+      setStatus('');
+    }
+
+    function openPost(p){
+      document.getElementById('listView').style.display = 'none';
+      document.getElementById('postView').style.display = 'block';
+
+      resetPostPlayerArea();
+
+      document.getElementById('postThumb').src = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+      document.getElementById('postTitle').innerHTML = p.title.rendered;
+
+      const date = new Date(p.date);
+      document.getElementById('postMeta').textContent =
+        `Posted on ${date.toDateString()} at ${date.toLocaleTimeString()}`;
+
+      const cleanText = document.createElement('div');
+      cleanText.innerHTML = decode(p.content.rendered);
+      cleanText.querySelectorAll('iframe,img,script,video').forEach(e => e.remove());
+      document.getElementById('postContent').innerHTML = cleanText.innerHTML;
+
+      const postStreams = document.getElementById('postStreams');
+      postStreams.innerHTML = '';
+
+      const links = extractStreams(p.content.rendered);
+
+      links.forEach(u => {
+        const row = document.createElement('div');
+        row.className = 'stream-row';
+
+        const linkEl = document.createElement('a');
+        linkEl.href = u;
+        linkEl.target = '_blank';
+        linkEl.textContent = u;
+
+        const btnWrap = document.createElement('div');
+        btnWrap.className = 'btn-row';
+
+        const playBtn = document.createElement('button');
+        playBtn.className = 'play-btn';
+        playBtn.textContent = `Play (${sourceName(u)})`;
+
+        playBtn.onclick = async () => {
+          playBtn.textContent = 'Loading…';
+          resetPostPlayerArea();
+
+          try{
+            const src = await resolveVideo(u);
+
+            if(src){
+              playDirectOrIframe(src);
+              setStatus("Loaded normal player.");
+            }else{
+              setStatus("Failed to resolve video.");
+            }
+          }catch(err){
+            console.error(err);
+            setStatus("Play failed.");
+          }
+
+          playBtn.textContent = `Play (${sourceName(u)})`;
+        };
+
+        btnWrap.appendChild(playBtn);
+
+        if(hostNeedsExtract(u)){
+          const extractBtn = document.createElement('button');
+          extractBtn.className = 'extract-btn';
+          extractBtn.textContent = 'Extract';
+
+          extractBtn.onclick = async () => {
+            extractBtn.textContent = 'Extracting…';
+            resetPostPlayerArea();
+
+            try{
+              const ok = await extractStream(u);
+              if(!ok){
+                setStatus("Extractor did not match this URL.");
+              }
+            }catch(err){
+              console.error(err);
+              setStatus("Extract failed.");
+            }
+
+            extractBtn.textContent = 'Extract';
+          };
+
+          btnWrap.appendChild(extractBtn);
+        }
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => copyText(u);
+
+        btnWrap.appendChild(copyBtn);
+
+        row.appendChild(linkEl);
+        row.appendChild(btnWrap);
+        postStreams.appendChild(row);
+      });
+
+      const postImages = document.getElementById('postImages');
+      postImages.innerHTML = '';
+
+      extractImages(p.content.rendered).forEach(src => {
+        const img = document.createElement('img');
+        img.src = src;
+        postImages.appendChild(img);
+      });
+    }
+
+    function backToList(){
+      resetPostPlayerArea();
+      document.getElementById('postView').style.display = 'none';
+      document.getElementById('listView').style.display = 'block';
+    }
+
+    document.getElementById('searchInput').oninput = e => {
+      search = e.target.value;
+      page = 1;
+      loadPosts();
     };
 
-    row.appendChild(b);
-    postStreams.appendChild(row);
-  });
-
-  postImages.innerHTML='';
-  extractImages(p.content.rendered).forEach(src=>{
-    const img=document.createElement('img');
-    img.src=src;
-    postImages.appendChild(img);
-  });
-}
-
-/* ===== NAV ===== */
-function backToList(){
-  if(hlsInstance){
-    hlsInstance.destroy();
-    hlsInstance = null;
-  }
-  postView.style.display='none';
-  listView.style.display='block';
-}
-
-searchInput.oninput=e=>{
-  search=e.target.value;
-  page=1;
-  loadPosts();
-};
-
-loadPosts();
-</script>
-
+    loadPosts();
+  </script>
 </body>
 </html>
